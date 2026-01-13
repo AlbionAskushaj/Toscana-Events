@@ -9,9 +9,11 @@ import {
   MenuSelectionCourse,
   CourseType,
   CreateInquiryPayload,
+  MenuTemplate,
+  MenuTemplateCourse,
 } from "@shared/types";
 
-export type { MenuCategory, MenuItem, RoomLayout, EventInquiry, InquiryStatus, PricingSummary, SeatingConfig, MenuSelectionCourse, CourseType, CreateInquiryPayload };
+export type { MenuCategory, MenuItem, RoomLayout, EventInquiry, InquiryStatus, PricingSummary, SeatingConfig, MenuSelectionCourse, CourseType, CreateInquiryPayload, MenuTemplate, MenuTemplateCourse };
 
 export interface EventDetailsInput {
   contactName: string;
@@ -34,4 +36,8 @@ export interface InquiryFormState {
   };
   seatingConfig: SeatingConfig;
   roomLayoutId: string;
+  roomFlexibility: "flexible" | "specific";
+  depositAmount: number | null;
+  depositDeferred: boolean;
+  menuStyleId: string;
 }

@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { supabase } from "../config/supabase";
+import { supabaseAdmin } from "../config/supabase";
 import { RoomLayoutRow, TableMetaRow, TableAreaRow, AreaLineRow } from "../types/tables";
 
 const GRID_SIZE = 20;
@@ -94,7 +94,7 @@ const normalizeAreas = (areas?: Array<{ id: string; name: string; lines?: AreaLi
 
 export const getRooms = async (_req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase.from("room_layouts").select("*");
+    const { data, error } = await supabaseAdmin.from("room_layouts").select("*");
     if (error) throw error;
     res.json((data || []).map(toRoom));
   } catch (err) {
@@ -110,7 +110,7 @@ export const createRoom = async (req: Request, res: Response) => {
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("room_layouts")
       .insert({
         name,
@@ -140,7 +140,7 @@ export const createRoom = async (req: Request, res: Response) => {
 export const updateRoom = async (req: Request, res: Response) => {
   const { name, capacity, description, tables, areas } = req.body || {};
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("room_layouts")
       .update({
         ...(name !== undefined ? { name } : {}),
@@ -163,7 +163,7 @@ export const updateRoom = async (req: Request, res: Response) => {
 
 export const deleteRoom = async (req: Request, res: Response) => {
   try {
-    const { error } = await supabase.from("room_layouts").delete().eq("id", req.params.id);
+    const { error } = await supabaseAdmin.from("room_layouts").delete().eq("id", req.params.id);
     if (error) throw error;
     res.status(204).send();
   } catch (err) {

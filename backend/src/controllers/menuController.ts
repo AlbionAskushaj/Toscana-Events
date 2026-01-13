@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { supabase } from "../config/supabase";
-import { MenuCategoryRow, MenuItemRow } from "../types/tables";
+import { supabaseAdmin } from "../config/supabase";
+import { MenuCategoryRow, MenuItemRow, MenuTemplateRow, MenuTemplateCourseRow } from "../types/tables";
 
 const normalizeName = (value: string) =>
   value
@@ -26,13 +26,47 @@ const toMenuItem = (row: MenuItemRow) => ({
   active: row.active,
 });
 
+const normalizeTemplateCourses = (input: unknown): MenuTemplateCourseRow[] => {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((course) => {
+      if (typeof course === "string") {
+        return { name: course.trim() };
+      }
+      if (course && typeof course === "object" && "name" in course) {
+        return {
+          name: String((course as any).name || "").trim(),
+          suggested_item_names: Array.isArray((course as any).suggestedItemNames)
+            ? (course as any).suggestedItemNames.map((name: any) => String(name))
+            : Array.isArray((course as any).suggested_item_names)
+            ? (course as any).suggested_item_names.map((name: any) => String(name))
+            : undefined,
+        };
+      }
+      return null;
+    })
+    .filter(Boolean)
+    .filter((course): course is MenuTemplateCourseRow => Boolean(course?.name));
+};
+
+const toTemplate = (row: MenuTemplateRow) => ({
+  _id: row.id,
+  name: row.name,
+  description: row.description,
+  sortOrder: row.sort_order,
+  courses: (row.courses || []).map((course) => ({
+    name: course.name,
+    suggestedItemNames: course.suggested_item_names || (course as any).suggestedItemNames,
+  })),
+});
+
 async function findDuplicateMenuItem(input: {
   id?: string;
   categoryId: string;
   name: string;
   pricePerPerson: number;
 }): Promise<MenuItemRow | null> {
-  const { data, error } = await supabase
+  const { data, error } = await supabaseAdmin
     .from("menu_items")
     .select("*")
     .eq("category_id", input.categoryId)
@@ -52,7 +86,7 @@ async function findDuplicateMenuItem(input: {
 
 export const getMenuCategories = async (_req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("menu_categories")
       .select("*")
       .order("sort_order", { ascending: true });
@@ -68,7 +102,7 @@ export const getMenuCategories = async (_req: Request, res: Response) => {
 export const getMenuItems = async (req: Request, res: Response) => {
   try {
     const { categoryId, active } = req.query;
-    let query = supabase.from("menu_items").select("*");
+    let query = supabaseAdmin.from("menu_items").select("*");
 
     if (categoryId) {
       query = query.eq("category_id", String(categoryId));
@@ -87,6 +121,26 @@ export const getMenuItems = async (req: Request, res: Response) => {
   }
 };
 
+export const getMenuTemplates = async (_req: Request, res: Response) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("menu_templates")
+      .select("*")
+      .order("sort_order", { ascending: true });
+
+    if (error) {
+      if (error.code === "PGRST205") {
+        return res.json([]);
+      }
+      throw error;
+    }
+    res.json((data || []).map(toTemplate));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load menu templates" });
+  }
+};
+
 export const createMenuCategory = async (req: Request, res: Response) => {
   const { name, sortOrder } = req.body || {};
   if (!name || typeof name !== "string") {
@@ -94,7 +148,7 @@ export const createMenuCategory = async (req: Request, res: Response) => {
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("menu_categories")
       .insert({ name, sort_order: Number(sortOrder) || 0 })
       .select()
@@ -108,10 +162,74 @@ export const createMenuCategory = async (req: Request, res: Response) => {
   }
 };
 
+export const createMenuTemplate = async (req: Request, res: Response) => {
+  const { name, description = "", sortOrder, courses } = req.body || {};
+  if (!name || typeof name !== "string") {
+    return res.status(400).json({ message: "Template name is required" });
+  }
+
+  const normalizedCourses = normalizeTemplateCourses(courses);
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("menu_templates")
+      .insert({
+        name,
+        description,
+        sort_order: Number(sortOrder) || 0,
+        courses: normalizedCourses,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(toTemplate(data as MenuTemplateRow));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to create menu template" });
+  }
+};
+
+export const updateMenuTemplate = async (req: Request, res: Response) => {
+  const { name, description, sortOrder, courses } = req.body || {};
+
+  const updatePayload: Record<string, any> = {};
+  if (name !== undefined) updatePayload.name = name;
+  if (description !== undefined) updatePayload.description = description;
+  if (sortOrder !== undefined) updatePayload.sort_order = Number(sortOrder) || 0;
+  if (courses !== undefined) updatePayload.courses = normalizeTemplateCourses(courses);
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("menu_templates")
+      .update(updatePayload)
+      .eq("id", req.params.id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(toTemplate(data as MenuTemplateRow));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update menu template" });
+  }
+};
+
+export const deleteMenuTemplate = async (req: Request, res: Response) => {
+  try {
+    const { error } = await supabaseAdmin.from("menu_templates").delete().eq("id", req.params.id);
+    if (error) throw error;
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete menu template" });
+  }
+};
+
 export const updateMenuCategory = async (req: Request, res: Response) => {
   const { name, sortOrder } = req.body || {};
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("menu_categories")
       .update({
         ...(name !== undefined ? { name } : {}),
@@ -131,7 +249,7 @@ export const updateMenuCategory = async (req: Request, res: Response) => {
 
 export const deleteMenuCategory = async (req: Request, res: Response) => {
   try {
-    const { error } = await supabase.from("menu_categories").delete().eq("id", req.params.id);
+    const { error } = await supabaseAdmin.from("menu_categories").delete().eq("id", req.params.id);
     if (error) throw error;
     res.status(204).send();
   } catch (err) {
@@ -167,7 +285,7 @@ export const createMenuItem = async (req: Request, res: Response) => {
       return res.status(409).json({ message: "Duplicate menu item detected" });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("menu_items")
       .insert({
         category_id: categoryId,
@@ -203,7 +321,7 @@ export const updateMenuItem = async (req: Request, res: Response) => {
   } = req.body || {};
 
   try {
-    const { data: existing, error: existingError } = await supabase
+    const { data: existing, error: existingError } = await supabaseAdmin
       .from("menu_items")
       .select("*")
       .eq("id", req.params.id)
@@ -228,7 +346,7 @@ export const updateMenuItem = async (req: Request, res: Response) => {
       return res.status(409).json({ message: "Duplicate menu item detected" });
     }
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("menu_items")
       .update({
         ...(categoryId !== undefined ? { category_id: categoryId } : {}),
@@ -254,7 +372,7 @@ export const updateMenuItem = async (req: Request, res: Response) => {
 
 export const deleteMenuItem = async (req: Request, res: Response) => {
   try {
-    const { error } = await supabase.from("menu_items").delete().eq("id", req.params.id);
+    const { error } = await supabaseAdmin.from("menu_items").delete().eq("id", req.params.id);
     if (error) throw error;
     res.status(204).send();
   } catch (err) {
@@ -267,7 +385,7 @@ export const dedupeMenuItems = async (req: Request, res: Response) => {
   const dryRun = String(req.query.dryRun ?? "true").toLowerCase() !== "false";
 
   try {
-    const { data, error } = await supabase.from("menu_items").select("*");
+    const { data, error } = await supabaseAdmin.from("menu_items").select("*");
     if (error) throw error;
 
     const items = data || [];
@@ -288,7 +406,7 @@ export const dedupeMenuItems = async (req: Request, res: Response) => {
     });
 
     if (!dryRun && duplicates.length > 0) {
-      const { error: deleteError } = await supabase
+      const { error: deleteError } = await supabaseAdmin
         .from("menu_items")
         .delete()
         .in(

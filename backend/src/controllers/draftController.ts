@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { supabase } from "../config/supabase";
+import { supabaseAdmin } from "../config/supabase";
 import { DraftRow } from "../types/tables";
 
 const RETENTION_DAYS = 30;
@@ -17,7 +17,7 @@ const toDraft = (row: DraftRow) => ({
 
 const cleanupOldDrafts = async () => {
   const cutoff = cutoffIso();
-  await supabase.from("drafts").delete().lt("updated_at", cutoff);
+  await supabaseAdmin.from("drafts").delete().lt("updated_at", cutoff);
 };
 
 export const listDrafts = async (req: Request, res: Response) => {
@@ -29,7 +29,7 @@ export const listDrafts = async (req: Request, res: Response) => {
   try {
     await cleanupOldDrafts();
     const cutoff = cutoffIso();
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("drafts")
       .select("*")
       .eq("email", email)
@@ -46,7 +46,7 @@ export const listDrafts = async (req: Request, res: Response) => {
 
 export const getDraft = async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("drafts")
       .select("*")
       .eq("id", req.params.id)
@@ -71,7 +71,7 @@ export const createDraft = async (req: Request, res: Response) => {
 
   try {
     await cleanupOldDrafts();
-    const { data: inserted, error } = await supabase
+    const { data: inserted, error } = await supabaseAdmin
       .from("drafts")
       .insert({
         email,
@@ -98,7 +98,7 @@ export const updateDraft = async (req: Request, res: Response) => {
   }
 
   try {
-    const { data: existing, error: existingError } = await supabase
+    const { data: existing, error: existingError } = await supabaseAdmin
       .from("drafts")
       .select("*")
       .eq("id", req.params.id)
@@ -111,7 +111,7 @@ export const updateDraft = async (req: Request, res: Response) => {
       return res.status(403).json({ message: "Email does not match draft" });
     }
 
-    const { data: updated, error } = await supabase
+    const { data: updated, error } = await supabaseAdmin
       .from("drafts")
       .update({
         data,

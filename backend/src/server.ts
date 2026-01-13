@@ -1,6 +1,6 @@
 import { app } from "./app";
 import { env } from "./config/env";
-import { supabase } from "./config/supabase";
+import { supabaseAdmin } from "./config/supabase";
 
 async function checkSupabase() {
   if (!env.supabaseUrl || !env.supabaseServiceRoleKey) {
@@ -9,7 +9,7 @@ async function checkSupabase() {
   }
 
   try {
-    const { error } = await supabase.from("menu_categories").select("id").limit(1);
+    const { error } = await supabaseAdmin.from("menu_categories").select("id").limit(1);
     if (error) {
       console.error("[startup] Supabase connection check failed:", error.message);
       return;

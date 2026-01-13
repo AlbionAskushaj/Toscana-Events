@@ -29,6 +29,14 @@ create table menu_items (
   active boolean default true
 );
 
+create table menu_templates (
+  id uuid primary key default uuid_generate_v4(),
+  name text not null,
+  description text default '',
+  sort_order int not null default 0,
+  courses jsonb not null default '[]'::jsonb
+);
+
 create table room_layouts (
   id uuid primary key default uuid_generate_v4(),
   name text not null,
@@ -72,6 +80,15 @@ create table drafts (
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
+
+create table admin_users (
+  id uuid primary key default uuid_generate_v4(),
+  email text not null unique,
+  created_at timestamptz default now()
+);
+
+-- seed at least one admin
+-- insert into admin_users (email) values ('admin@example.com');
 ```
 3) Grab your Supabase keys:
    - `SUPABASE_URL`
@@ -82,6 +99,8 @@ create table drafts (
 SUPABASE_URL=...
 SUPABASE_SERVICE_ROLE_KEY=...
 SUPABASE_ANON_KEY=...
+POSTMARK_SERVER_TOKEN=...
+EMAIL_FROM=info@toscanagrill.ca
 PORT=5001
 CLIENT_ORIGIN=http://localhost:5173
 ```
@@ -98,7 +117,7 @@ npm run install:all
 - Or run both: `npm run dev` (uses concurrently)
 
 ## Seed sample data
-After backend is running and environment is set, POST to `http://localhost:5001/api/seed` to load menu categories, items, and rooms.
+After backend is running and environment is set, POST to `http://localhost:5001/api/seed` with an admin session (login at `/admin/login` first) or a bearer token to load menu categories, items, and rooms.
 
 ## API endpoints (base `/api`)
 - `GET /menu/categories`
@@ -115,5 +134,5 @@ After backend is running and environment is set, POST to `http://localhost:5001/
 - `/admin/inquiries` Simple admin list and status updates
 
 ## Notes
-- No authentication in this starter; restrict admin routes behind auth before production.
+- Admin routes are protected by Supabase auth via the backend; add admin emails to `admin_users`.
 - Pricing logic is a simple average per course with 18% service and 5% tax placeholder; adjust to your venue's policy.

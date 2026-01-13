@@ -17,6 +17,19 @@ export interface MenuItem {
   category?: MenuCategory;
 }
 
+export interface MenuTemplateCourse {
+  name: string;
+  suggestedItemNames?: string[];
+}
+
+export interface MenuTemplate {
+  _id: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+  courses: MenuTemplateCourse[];
+}
+
 export interface RoomLayout {
   _id: string;
   name: string;

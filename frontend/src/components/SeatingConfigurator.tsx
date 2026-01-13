@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { RoomLayout, SeatingConfig } from "../types";
 import SeatingMap from "./SeatingMap";
 
@@ -9,9 +9,19 @@ interface Props {
   isBuyout?: boolean;
   guestCount: number;
   onChange: (roomLayoutId: string, seatingConfig: SeatingConfig) => void;
+  showRoomSelect?: boolean;
 }
 
-const SeatingConfigurator: React.FC<Props> = ({ rooms, roomLayoutId, seatingConfig, isBuyout, guestCount, onChange }) => {
+const SeatingConfigurator: React.FC<Props> = ({
+  rooms,
+  roomLayoutId,
+  seatingConfig,
+  isBuyout,
+  guestCount,
+  onChange,
+  showRoomSelect = true,
+}) => {
+  const [autoAssign, setAutoAssign] = useState(true);
   const availableRooms = rooms;
   const selectedRoom = rooms.find((room) => room._id === roomLayoutId) || rooms[0];
 
@@ -53,6 +63,39 @@ const SeatingConfigurator: React.FC<Props> = ({ rooms, roomLayoutId, seatingConf
     onChange(selectedRoom?._id || "", nextConfig);
   };
 
+  const autoAssignTables = () => {
+    if (!selectedRoom || guestCount <= 0) {
+      applySelection([]);
+      return;
+    }
+    const sorted = [...tables].sort((a, b) => b.seats - a.seats);
+    const picked: string[] = [];
+    let total = 0;
+    for (const table of sorted) {
+      if (total >= guestCount) break;
+      picked.push(table.id);
+      total += table.seats;
+    }
+    applySelection(picked);
+  };
+
+  useEffect(() => {
+    if (!autoAssign) return;
+    const current = (seatingConfig.selectedTableIds || []).slice().sort().join(",");
+    const sorted = [...tables].sort((a, b) => b.seats - a.seats);
+    const picked: string[] = [];
+    let total = 0;
+    for (const table of sorted) {
+      if (total >= guestCount) break;
+      picked.push(table.id);
+      total += table.seats;
+    }
+    const next = picked.slice().sort().join(",");
+    if (current !== next) {
+      applySelection(picked);
+    }
+  }, [autoAssign, guestCount, selectedRoom?._id, tables]);
+
   const groupedTables = useMemo(() => {
     const groups = new Map<string, string[]>();
     tables.forEach((table) => {
@@ -67,19 +110,22 @@ const SeatingConfigurator: React.FC<Props> = ({ rooms, roomLayoutId, seatingConf
   return (
     <div className="card">
       <div className="card-body">
+        <p className="text-muted mb-3">Not sure about seating? Leave auto-assign on and we’ll refine it later.</p>
         <div className="row g-3">
-          <div className="col-12 col-lg-6">
-            <label className="form-label">Select Room</label>
-            <select className="form-select" value={selectedRoom?._id || ""} onChange={(e) => handleRoomChange(e.target.value)}>
-              {availableRooms.map((room) => (
-                <option key={room._id} value={room._id}>
-                  {room.name} (Capacity {room.capacity})
-                </option>
-              ))}
-            </select>
-          </div>
-          {selectedRoom && (
+          {showRoomSelect && (
             <div className="col-12 col-lg-6">
+              <label className="form-label">Select Room</label>
+              <select className="form-select" value={selectedRoom?._id || ""} onChange={(e) => handleRoomChange(e.target.value)}>
+                {availableRooms.map((room) => (
+                  <option key={room._id} value={room._id}>
+                    {room.name} (Capacity {room.capacity})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {selectedRoom && (
+            <div className={`col-12 ${showRoomSelect ? "col-lg-6" : ""}`}>
               <h3 className="h6 mb-1">{selectedRoom.name}</h3>
               <p className="text-muted mb-0">{selectedRoom.description}</p>
             </div>
@@ -110,11 +156,20 @@ const SeatingConfigurator: React.FC<Props> = ({ rooms, roomLayoutId, seatingConf
           <button
             className="btn btn-outline-secondary btn-sm"
             type="button"
-            onClick={() => applySelection([])}
-            disabled={selectedTableIds.length === 0}
+            onClick={() => setAutoAssign((prev) => !prev)}
           >
-            Clear selection
+            {autoAssign ? "Customize seating" : "Use auto-assign"}
           </button>
+          {!autoAssign && (
+            <button
+              className="btn btn-outline-secondary btn-sm"
+              type="button"
+              onClick={() => applySelection([])}
+              disabled={selectedTableIds.length === 0}
+            >
+              Clear selection
+            </button>
+          )}
         </div>
 
         <div className="mt-3">
@@ -134,7 +189,7 @@ const SeatingConfigurator: React.FC<Props> = ({ rooms, roomLayoutId, seatingConf
         </div>
       </div>
 
-      {selectedRoom?.tables && selectedRoom.tables.length > 0 && (
+      {!autoAssign && selectedRoom?.tables && selectedRoom.tables.length > 0 && (
         <SeatingMap
           room={selectedRoom}
           seatingConfig={seatingConfig}

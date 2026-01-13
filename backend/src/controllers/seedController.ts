@@ -1,14 +1,14 @@
 import { Request, Response } from "express";
-import { supabase } from "../config/supabase";
+import { supabaseAdmin } from "../config/supabase";
 import { MenuCategoryRow } from "../types/tables";
 
 export const seedData = async (_req: Request, res: Response) => {
   try {
-    await supabase.from("menu_items").delete().neq("id", "");
-    await supabase.from("menu_categories").delete().neq("id", "");
-    await supabase.from("room_layouts").delete().neq("id", "");
+    await supabaseAdmin.from("menu_items").delete().neq("id", "");
+    await supabaseAdmin.from("menu_categories").delete().neq("id", "");
+    await supabaseAdmin.from("room_layouts").delete().neq("id", "");
 
-    const { data: categories, error: categoryError } = await supabase
+    const { data: categories, error: categoryError } = await supabaseAdmin
       .from("menu_categories")
       .insert([
         { name: "Antipasti", sort_order: 1 },
@@ -24,7 +24,7 @@ export const seedData = async (_req: Request, res: Response) => {
 
     const catId = (name: string) => categories.find((c) => c.name === name)?.id as string;
 
-    const { error: itemsError } = await supabase.from("menu_items").insert([
+    const { error: itemsError } = await supabaseAdmin.from("menu_items").insert([
       // Antipasti
       { category_id: catId("Antipasti"), name: "Parmesan Truffle Fries", description: "Crispy fries with white truffle oil, parmesan, sea salt", price_per_person: 11, is_vegetarian: true, is_vegan: false, is_gluten_free: false, active: true },
       { category_id: catId("Antipasti"), name: "Calamari Fritti", description: "Lightly breaded calamari with spicy tomato sauce and lemon", price_per_person: 18, is_vegetarian: false, is_vegan: false, is_gluten_free: false, active: true },
@@ -73,7 +73,7 @@ export const seedData = async (_req: Request, res: Response) => {
 
     if (itemsError) throw itemsError;
 
-    const { error: roomsError } = await supabase.from("room_layouts").insert([
+    const { error: roomsError } = await supabaseAdmin.from("room_layouts").insert([
       {
         name: "Toscana on 10th (Main Room)",
         capacity: 150,

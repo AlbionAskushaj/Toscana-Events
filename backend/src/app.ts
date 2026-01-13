@@ -7,19 +7,29 @@ import roomRoutes from "./routes/roomRoutes";
 import inquiryRoutes from "./routes/inquiryRoutes";
 import seedRoutes from "./routes/seedRoutes";
 import draftRoutes from "./routes/draftRoutes";
+import adminMenuRoutes from "./routes/adminMenuRoutes";
+import adminInquiryRoutes from "./routes/adminInquiryRoutes";
+import adminRoomsRoutes from "./routes/adminRoomsRoutes";
+import adminDraftRoutes from "./routes/adminDraftRoutes";
+import authRoutes from "./routes/authRoutes";
 
 console.log("[startup] Initializing Express app");
 const app = express();
 
-app.use(cors({ origin: env.clientOrigin }));
+app.use(cors({ origin: env.clientOrigin, credentials: true }));
 app.use(express.json());
 app.use(morgan("dev"));
 
+app.use("/api/auth", authRoutes);
 app.use("/api/menu", menuRoutes);
 app.use("/api/rooms", roomRoutes);
 app.use("/api/inquiries", inquiryRoutes);
 app.use("/api/seed", seedRoutes);
 app.use("/api/drafts", draftRoutes);
+app.use("/api/admin/menu", adminMenuRoutes);
+app.use("/api/admin/inquiries", adminInquiryRoutes);
+app.use("/api/admin/rooms", adminRoomsRoutes);
+app.use("/api/admin/drafts", adminDraftRoutes);
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });

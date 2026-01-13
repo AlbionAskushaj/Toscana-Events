@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { createRoom, deleteRoom, getRooms, updateRoom } from "../api";
+import { adminCreateRoom, adminDeleteRoom, adminUpdateRoom, getRooms } from "../api";
 import { RoomLayout, TableArea, TableMeta, AreaLine } from "../types";
 
 const GRID_SIZE = 20;
@@ -48,6 +48,7 @@ const AdminRoomsPage = () => {
   const [tool, setTool] = useState<Tool>("select");
   const [activeAreaId, setActiveAreaId] = useState<string | undefined>(undefined);
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
+  const [selectedLine, setSelectedLine] = useState<{ areaId: string; index: number } | null>(null);
   const [tableDraft, setTableDraft] = useState<TableDraft>({
     label: "",
     seats: 4,
@@ -88,6 +89,7 @@ const AdminRoomsPage = () => {
     });
     setActiveAreaId(room.areas?.[0]?.id);
     setSelectedTableId(null);
+    setSelectedLine(null);
     setNotice("");
     setError("");
   };
@@ -96,6 +98,7 @@ const AdminRoomsPage = () => {
     setDraft(emptyRoom());
     setSelectedRoomId(null);
     setSelectedTableId(null);
+    setSelectedLine(null);
   };
 
   const handleSaveRoom = async () => {
@@ -106,11 +109,11 @@ const AdminRoomsPage = () => {
 
     try {
       if (draft._id) {
-        const updated = await updateRoom(draft._id, draft);
+        const updated = await adminUpdateRoom(draft._id, draft);
         setRooms((prev) => prev.map((room) => (room._id === updated._id ? updated : room)));
         setNotice("Room updated.");
       } else {
-        const created = await createRoom(draft);
+        const created = await adminCreateRoom(draft);
         setRooms((prev) => [created, ...prev]);
         selectRoom(created);
         setNotice("Room created.");
@@ -125,7 +128,7 @@ const AdminRoomsPage = () => {
     if (!draft._id) return;
     if (!confirm("Delete this room layout?")) return;
     try {
-      await deleteRoom(draft._id);
+      await adminDeleteRoom(draft._id);
       setRooms((prev) => prev.filter((room) => room._id !== draft._id));
       setDraft(emptyRoom());
       setSelectedRoomId(null);
@@ -176,6 +179,9 @@ const AdminRoomsPage = () => {
     if (activeAreaId === id) {
       setActiveAreaId(draft.areas.find((area) => area.id !== id)?.id);
     }
+    if (selectedLine?.areaId === id) {
+      setSelectedLine(null);
+    }
   };
 
   const updateAreaName = (id: string, name: string) => {
@@ -186,18 +192,34 @@ const AdminRoomsPage = () => {
   };
 
   const addLine = (line: AreaLine, areaId: string) => {
+    setDraft((prev) => {
+      const nextAreas = prev.areas.map((area) =>
+        area.id === areaId
+          ? { ...area, lines: [...(area.lines || []), line] }
+          : area
+      );
+      const target = nextAreas.find((area) => area.id === areaId);
+      const index = target?.lines ? target.lines.length - 1 : 0;
+      setSelectedLine({ areaId, index });
+      return { ...prev, areas: nextAreas };
+    });
+  };
+
+  const removeLine = (areaId: string, index: number) => {
     setDraft((prev) => ({
       ...prev,
       areas: prev.areas.map((area) =>
         area.id === areaId
-          ? { ...area, lines: [...(area.lines || []), line] }
+          ? { ...area, lines: (area.lines || []).filter((_, idx) => idx !== index) }
           : area
       ),
     }));
+    setSelectedLine(null);
   };
 
   const handleCanvasClick = (x: number, y: number) => {
     setError("");
+    setSelectedLine(null);
     if (tool === "line") {
       if (!activeAreaId) {
         setError("Select an area to draw lines.");
@@ -254,8 +276,23 @@ const AdminRoomsPage = () => {
     }
   };
 
+  const moveTable = (id: string, x: number, y: number) => {
+    const moving = draft.tables.find((table) => table.id === id);
+    if (!moving) return;
+    const next = { ...moving, x, y };
+    const overlaps = draft.tables.some((table) => {
+      if (table.id === id) return false;
+      const xOverlap = next.x < table.x + table.width && next.x + next.width > table.x;
+      const yOverlap = next.y < table.y + table.height && next.y + next.height > table.y;
+      return xOverlap && yOverlap;
+    });
+    if (overlaps) return;
+    updateTable(id, { x, y });
+  };
+
   return (
-    <div className="container py-4">
+    <div className="page page-admin-rooms">
+      <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
         <div>
           <p className="eyebrow mb-1">Admin</p>
@@ -267,6 +304,9 @@ const AdminRoomsPage = () => {
           </Link>
           <Link className="btn btn-outline-secondary" to="/admin/menu">
             Menu
+          </Link>
+          <Link className="btn btn-outline-secondary" to="/admin/templates">
+            Templates
           </Link>
           <Link className="btn btn-primary" to="/admin/rooms">
             Rooms
@@ -396,6 +436,14 @@ const AdminRoomsPage = () => {
                   <button className="btn btn-outline-primary btn-sm" onClick={addArea}>
                     Add Area
                   </button>
+                  {selectedLine && (
+                    <button
+                      className="btn btn-outline-danger btn-sm mt-2"
+                      onClick={() => removeLine(selectedLine.areaId, selectedLine.index)}
+                    >
+                      Delete Selected Line
+                    </button>
+                  )}
 
                   <hr />
 
@@ -451,6 +499,12 @@ const AdminRoomsPage = () => {
                         ))}
                       </select>
                     </div>
+                  <div className="d-flex justify-content-end mt-2">
+                    <button className="btn btn-outline-primary btn-sm" type="button" onClick={() => setTool("table")}>
+                      Place table on grid
+                    </button>
+                  </div>
+                  <div className="text-muted small mt-1">Then click a grid cell to place it.</div>
                   </div>
 
                   {selectedTable && (
@@ -548,9 +602,17 @@ const AdminRoomsPage = () => {
                       gridSize={GRID_SIZE}
                       activeAreaId={activeAreaId}
                       tool={tool}
+                      selectedLine={selectedLine}
                       onCellClick={handleCanvasClick}
                       onSelectTable={(id) => {
                         setSelectedTableId(id);
+                        setTool("select");
+                        setSelectedLine(null);
+                      }}
+                      onMoveTable={moveTable}
+                      onSelectLine={(areaId, index) => {
+                        setSelectedLine({ areaId, index });
+                        setSelectedTableId(null);
                         setTool("select");
                       }}
                     />
@@ -564,6 +626,7 @@ const AdminRoomsPage = () => {
           </div>
         </div>
       </div>
+      </div>
     </div>
   );
 };
@@ -574,13 +637,29 @@ type GridCanvasProps = {
   gridSize: number;
   tool: Tool;
   activeAreaId?: string;
+  selectedLine: { areaId: string; index: number } | null;
   onCellClick: (x: number, y: number) => void;
   onSelectTable: (id: string) => void;
+  onMoveTable: (id: string, x: number, y: number) => void;
+  onSelectLine: (areaId: string, index: number) => void;
 };
 
-const GridCanvas = ({ tables, areas, gridSize, tool, activeAreaId, onCellClick, onSelectTable }: GridCanvasProps) => {
+const GridCanvas = ({
+  tables,
+  areas,
+  gridSize,
+  tool,
+  activeAreaId,
+  selectedLine,
+  onCellClick,
+  onSelectTable,
+  onMoveTable,
+  onSelectLine,
+}: GridCanvasProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [size, setSize] = useState(600);
+  const dragRef = useRef<{ id: string; offsetX: number; offsetY: number } | null>(null);
+  const tableMap = useMemo(() => new Map(tables.map((table) => [table.id, table])), [tables]);
 
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
@@ -601,8 +680,31 @@ const GridCanvas = ({ tables, areas, gridSize, tool, activeAreaId, onCellClick, 
     onCellClick(x, y);
   };
 
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (!dragRef.current) return;
+    const rect = event.currentTarget.getBoundingClientRect();
+    const table = tableMap.get(dragRef.current.id);
+    if (!table) return;
+    const pxX = event.clientX - rect.left - dragRef.current.offsetX;
+    const pxY = event.clientY - rect.top - dragRef.current.offsetY;
+    const x = clamp(Math.round(pxX / cell), 0, gridSize - table.width);
+    const y = clamp(Math.round(pxY / cell), 0, gridSize - table.height);
+    onMoveTable(table.id, x, y);
+  };
+
+  const handleMouseUp = () => {
+    dragRef.current = null;
+  };
+
   return (
-    <div ref={containerRef} className="grid-canvas" onClick={handleClick}>
+    <div
+      ref={containerRef}
+      className="grid-canvas"
+      onClick={handleClick}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+    >
       <svg className="grid-lines" viewBox={`0 0 ${gridSize} ${gridSize}`}>
         {[...Array(gridSize + 1)].map((_, idx) => (
           <line key={`h-${idx}`} x1={0} y1={idx} x2={gridSize} y2={idx} />
@@ -618,7 +720,13 @@ const GridCanvas = ({ tables, areas, gridSize, tool, activeAreaId, onCellClick, 
               y1={line.y1 + 0.5}
               x2={line.x2 + 0.5}
               y2={line.y2 + 0.5}
-              className={`grid-area-line ${area.id === activeAreaId ? "active" : ""}`}
+              className={`grid-area-line ${area.id === activeAreaId ? "active" : ""} ${
+                selectedLine?.areaId === area.id && selectedLine?.index === idx ? "selected" : ""
+              }`}
+              onClick={(event) => {
+                event.stopPropagation();
+                onSelectLine(area.id, idx);
+              }}
             />
           ))
         )}
@@ -635,6 +743,17 @@ const GridCanvas = ({ tables, areas, gridSize, tool, activeAreaId, onCellClick, 
           }}
           onClick={(event) => {
             event.stopPropagation();
+            onSelectTable(table.id);
+          }}
+          onMouseDown={(event) => {
+            if (tool !== "select") return;
+            event.stopPropagation();
+            const rect = (event.currentTarget as HTMLDivElement).getBoundingClientRect();
+            dragRef.current = {
+              id: table.id,
+              offsetX: event.clientX - rect.left,
+              offsetY: event.clientY - rect.top,
+            };
             onSelectTable(table.id);
           }}
           title={`${table.label} · ${table.seats} seats`}

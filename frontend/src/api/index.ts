@@ -1,12 +1,12 @@
 import {
   MenuCategory,
   MenuItem,
+  MenuTemplate,
   RoomLayout,
   EventInquiry,
   InquiryStatus,
   CreateInquiryPayload,
 } from "../types";
-
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5001/api";
 
 async function handleResponse<T>(res: Response): Promise<T> {
@@ -19,6 +19,10 @@ async function handleResponse<T>(res: Response): Promise<T> {
     return undefined as T;
   }
   return JSON.parse(text) as T;
+}
+
+async function adminFetch(path: string, options?: RequestInit): Promise<Response> {
+  return fetch(`${API_BASE}${path}`, { ...options, credentials: "include" });
 }
 
 export async function getMenuCategories(): Promise<MenuCategory[]> {
@@ -34,6 +38,11 @@ export async function getMenuItems(params?: {
   if (params?.categoryId) query.set("categoryId", params.categoryId);
   if (params?.active !== undefined) query.set("active", String(params.active));
   const res = await fetch(`${API_BASE}/menu/items?${query.toString()}`);
+  return handleResponse(res);
+}
+
+export async function getMenuTemplates(): Promise<MenuTemplate[]> {
+  const res = await fetch(`${API_BASE}/menu/templates`);
   return handleResponse(res);
 }
 
@@ -213,4 +222,170 @@ export async function updateInquiryStatus(
     body: JSON.stringify({ status }),
   });
   return handleResponse(res);
+}
+
+export async function adminCreateMenuCategory(payload: { name: string; sortOrder: number }): Promise<MenuCategory> {
+  const res = await adminFetch("/admin/menu/categories", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
+}
+
+export async function adminCreateMenuTemplate(payload: {
+  name: string;
+  description?: string;
+  sortOrder: number;
+  courses: Array<{ name: string; suggestedItemNames?: string[] }>;
+}): Promise<MenuTemplate> {
+  const res = await adminFetch("/admin/menu/templates", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
+}
+
+export async function adminUpdateMenuTemplate(
+  id: string,
+  payload: Partial<{
+    name: string;
+    description: string;
+    sortOrder: number;
+    courses: Array<{ name: string; suggestedItemNames?: string[] }>;
+  }>
+): Promise<MenuTemplate> {
+  const res = await adminFetch(`/admin/menu/templates/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
+}
+
+export async function adminDeleteMenuTemplate(id: string): Promise<void> {
+  const res = await adminFetch(`/admin/menu/templates/${id}`, {
+    method: "DELETE",
+  });
+  await handleResponse(res);
+}
+
+export async function adminUpdateMenuCategory(
+  id: string,
+  payload: { name?: string; sortOrder?: number }
+): Promise<MenuCategory> {
+  const res = await adminFetch(`/admin/menu/categories/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
+}
+
+export async function adminDeleteMenuCategory(id: string): Promise<void> {
+  const res = await adminFetch(`/admin/menu/categories/${id}`, {
+    method: "DELETE",
+  });
+  await handleResponse(res);
+}
+
+export async function adminCreateMenuItem(payload: {
+  categoryId: string;
+  name: string;
+  description?: string;
+  pricePerPerson: number;
+  isVegetarian?: boolean;
+  isVegan?: boolean;
+  isGlutenFree?: boolean;
+  active?: boolean;
+}): Promise<MenuItem> {
+  const res = await adminFetch("/admin/menu/items", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
+}
+
+export async function adminUpdateMenuItem(
+  id: string,
+  payload: Partial<{
+    categoryId: string;
+    name: string;
+    description: string;
+    pricePerPerson: number;
+    isVegetarian: boolean;
+    isVegan: boolean;
+    isGlutenFree: boolean;
+    active: boolean;
+  }>
+): Promise<MenuItem> {
+  const res = await adminFetch(`/admin/menu/items/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
+}
+
+export async function adminDeleteMenuItem(id: string): Promise<void> {
+  const res = await adminFetch(`/admin/menu/items/${id}`, {
+    method: "DELETE",
+  });
+  await handleResponse(res);
+}
+
+export async function adminDedupeMenuItems(dryRun = true): Promise<{
+  dryRun: boolean;
+  totalItems: number;
+  duplicateCount: number;
+  duplicates: MenuItem[];
+}> {
+  const res = await adminFetch(`/admin/menu/items/dedupe?dryRun=${dryRun}`, {
+    method: "POST",
+  });
+  return handleResponse(res);
+}
+
+export async function adminGetInquiries(): Promise<EventInquiry[]> {
+  const res = await adminFetch("/admin/inquiries");
+  return handleResponse(res);
+}
+
+export async function adminUpdateInquiryStatus(
+  id: string,
+  status: InquiryStatus
+): Promise<EventInquiry> {
+  const res = await adminFetch(`/admin/inquiries/${id}/status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+  return handleResponse(res);
+}
+
+export async function adminCreateRoom(payload: Partial<RoomLayout>): Promise<RoomLayout> {
+  const res = await adminFetch("/admin/rooms", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
+}
+
+export async function adminUpdateRoom(id: string, payload: Partial<RoomLayout>): Promise<RoomLayout> {
+  const res = await adminFetch(`/admin/rooms/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  return handleResponse(res);
+}
+
+export async function adminDeleteRoom(id: string): Promise<void> {
+  const res = await adminFetch(`/admin/rooms/${id}`, {
+    method: "DELETE",
+  });
+  await handleResponse(res);
 }

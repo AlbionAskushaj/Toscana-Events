@@ -5,9 +5,11 @@ import MenuBuilder from "../components/MenuBuilder";
 import SeatingConfigurator from "../components/SeatingConfigurator";
 import PricingSummary from "../components/PricingSummary";
 import InquiryReview from "../components/InquiryReview";
+import { buildTemplateCourses, fallbackMenuTemplates } from "../components/menuTemplates";
 import {
   getMenuCategories,
   getMenuItems,
+  getMenuTemplates,
   getRooms,
   createInquiry,
   createDraft,
@@ -18,13 +20,24 @@ import type {
   EventDetailsInput,
   MenuCategory,
   MenuItem,
+  MenuTemplate,
   RoomLayout,
   InquiryFormState,
   PricingSummary as Pricing,
   CreateInquiryPayload,
 } from "../types";
 
-const steps = ["Event Details", "Menu", "Seating", "Review & Submit"];
+const steps = [
+  "Contact",
+  "Event Basics",
+  "Buyout",
+  "Room Preference",
+  "Deposit",
+  "Menu Style",
+  "Menu Courses",
+  "Seating",
+  "Review & Submit",
+];
 const LOCAL_DRAFT_KEY = "toscana:draft:v1";
 
 type LocalDraft = {
@@ -93,11 +106,16 @@ const EventBuilderPage = () => {
   const [categories, setCategories] = useState<MenuCategory[]>([]);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [rooms, setRooms] = useState<RoomLayout[]>([]);
+  const [templates, setTemplates] = useState<MenuTemplate[]>([]);
   const [form, setForm] = useState<InquiryFormState>({
     eventDetails: initialEventDetails,
     menuSelection: { courses: [{ courseType: "Course 1", itemIds: [] }] },
     seatingConfig: { tablesFor2: 0, tablesFor4: 0, tablesFor6: 0, longTables: 0, selectedTableIds: [], combinedGroups: [] },
     roomLayoutId: "",
+    roomFlexibility: "flexible",
+    depositAmount: null,
+    depositDeferred: true,
+    menuStyleId: fallbackMenuTemplates[0]._id,
   });
   const [pricing, setPricing] = useState<Pricing>(initialPricing);
   const [submitting, setSubmitting] = useState(false);
@@ -110,14 +128,22 @@ const EventBuilderPage = () => {
   const [serverDrafts, setServerDrafts] = useState<Array<{ id: string; email: string; data: any; createdAt: string; updatedAt: string }>>([]);
   const [serverDraftId, setServerDraftId] = useState<string | null>(null);
   const [draftNotice, setDraftNotice] = useState("");
+  const [isDraftOpen, setIsDraftOpen] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
   const initializedRef = useRef(false);
+  const stepRef = useRef(0);
 
   useEffect(() => {
     if (!form.eventDetails.isBuyout && form.seatingConfig.tables) {
       setForm((prev) => ({ ...prev, seatingConfig: { ...prev.seatingConfig, tables: undefined } }));
     }
   }, [form.eventDetails.isBuyout]);
+
+  const normalizeStep = (value: unknown) => {
+    const step = Number(value);
+    if (!Number.isFinite(step)) return 0;
+    return Math.max(0, Math.min(steps.length - 1, step));
+  };
 
   useEffect(() => {
     if (initializedRef.current) return;
@@ -138,12 +164,27 @@ const EventBuilderPage = () => {
   }, []);
 
   useEffect(() => {
+    if (localDraft) return;
+    const cookie = document.cookie
+      .split(";")
+      .map((part) => part.trim())
+      .find((part) => part.startsWith("toscana_step="));
+    if (!cookie) return;
+    const raw = decodeURIComponent(cookie.split("=")[1] || "");
+    const step = Number(raw);
+    if (Number.isFinite(step)) {
+      setCurrentStep(normalizeStep(step));
+    }
+  }, [localDraft]);
+
+  useEffect(() => {
     if (!initializedRef.current) return;
-    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = window.setTimeout(() => {
+    const nextStep = normalizeStep(currentStep);
+
+    const persistDraft = () => {
       const payload: LocalDraft = {
         form,
-        currentStep,
+        currentStep: nextStep,
         updatedAt: new Date().toISOString(),
         serverDraftId: serverDraftId || undefined,
         email: draftEmail || undefined,
@@ -151,10 +192,21 @@ const EventBuilderPage = () => {
       try {
         localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(payload));
         setLocalDraft(payload);
+        document.cookie = `toscana_step=${encodeURIComponent(String(nextStep))}; Max-Age=1209600; Path=/; SameSite=Lax`;
       } catch (err) {
         console.error(err);
       }
-    }, 500);
+    };
+
+    if (stepRef.current !== nextStep) {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+      stepRef.current = nextStep;
+      persistDraft();
+      return;
+    }
+
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(persistDraft, 500);
     return () => {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     };
@@ -163,23 +215,25 @@ const EventBuilderPage = () => {
   useEffect(() => {
     async function loadData() {
       try {
-        const [cats, menuItems, roomLayouts] = await Promise.all([
+        const [cats, menuItems, roomLayouts, templateData] = await Promise.all([
           getMenuCategories(),
           getMenuItems({ active: true }),
           getRooms(),
+          getMenuTemplates(),
         ]);
         const uniqueItems = Array.from(new Map(menuItems.map((i) => [i._id, i])).values());
         setCategories(cats);
         setItems(uniqueItems);
         setRooms(roomLayouts);
+        setTemplates(templateData || []);
         if (!form.roomLayoutId && roomLayouts[0]) {
           setForm((prev) => ({ ...prev, roomLayoutId: roomLayouts[0]._id, seatingConfig: roomLayouts[0].defaultTableConfig }));
         }
-      } catch (err) {
-        console.error(err);
-        setErrorMessage("Failed to load menu or rooms.");
-      }
+    } catch (err) {
+      console.error(err);
+      setErrorMessage("Failed to load menu or rooms.");
     }
+  }
     loadData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -188,9 +242,43 @@ const EventBuilderPage = () => {
     setPricing(computePricing(form.menuSelection, items, form.eventDetails.guestCount, form.eventDetails.isBuyout, form.eventDetails.buyoutAmount));
   }, [form.menuSelection, form.eventDetails.guestCount, form.eventDetails.isBuyout, form.eventDetails.buyoutAmount, items]);
 
+  useEffect(() => {
+    if (templates.length === 0) return;
+    const matches = templates.some((template) => template._id === form.menuStyleId);
+    if (!matches) {
+      const nextTemplate = templates[0];
+      const courses = buildTemplateCourses(nextTemplate, items);
+      setForm((prev) => ({
+        ...prev,
+        menuStyleId: nextTemplate._id,
+        menuSelection: courses.length > 0 ? { courses } : prev.menuSelection,
+      }));
+    }
+  }, [templates, form.menuStyleId, items]);
+
+  useEffect(() => {
+    const isBlank =
+      form.menuSelection.courses.length === 1 &&
+      form.menuSelection.courses[0].courseType === "Course 1" &&
+      form.menuSelection.courses[0].itemIds.length === 0;
+    if (items.length > 0 && isBlank) {
+      const list = templates.length > 0 ? templates : fallbackMenuTemplates;
+      const template = list.find((t) => t._id === form.menuStyleId) || list[0];
+      const courses = buildTemplateCourses(template, items);
+      setForm((prev) => ({ ...prev, menuSelection: { courses } }));
+    }
+  }, [items, form.menuSelection, form.menuStyleId, templates]);
+
   const applyDraft = (draft: LocalDraft) => {
-    setForm(draft.form);
-    setCurrentStep(draft.currentStep || 0);
+    setForm((prev) => ({
+      ...prev,
+      ...draft.form,
+      roomFlexibility: draft.form.roomFlexibility || "flexible",
+      depositAmount: draft.form.depositAmount ?? null,
+      depositDeferred: draft.form.depositDeferred ?? true,
+      menuStyleId: draft.form.menuStyleId || fallbackMenuTemplates[0]._id,
+    }));
+    setCurrentStep(normalizeStep(draft.currentStep));
     setLocalDraftAvailable(false);
     setDraftNotice("Draft restored.");
   };
@@ -201,6 +289,7 @@ const EventBuilderPage = () => {
     setLocalDraft(null);
     setServerDraftId(null);
     setDraftEmail("");
+    document.cookie = "toscana_step=; Max-Age=0; Path=/; SameSite=Lax";
   };
 
   const handleSaveToEmail = async () => {
@@ -247,7 +336,7 @@ const EventBuilderPage = () => {
     }
     const local: LocalDraft = {
       form: draft.data.form,
-      currentStep: draft.data.currentStep || 0,
+      currentStep: normalizeStep(draft.data.currentStep),
       updatedAt: new Date().toISOString(),
       serverDraftId: draft.id,
       email: draft.email,
@@ -262,17 +351,31 @@ const EventBuilderPage = () => {
       return Boolean(
         form.eventDetails.contactName &&
           form.eventDetails.contactEmail &&
-          form.eventDetails.contactPhone &&
+          form.eventDetails.contactPhone
+      );
+    }
+    if (currentStep === 1) {
+      return Boolean(
+        form.eventDetails.occasionType &&
           form.eventDetails.eventDate &&
           form.eventDetails.eventTime &&
           form.eventDetails.guestCount
       );
     }
-    if (currentStep === 1) {
-      return form.menuSelection.courses.some((course) => course.itemIds.length > 0);
-    }
     if (currentStep === 2) {
+      return true;
+    }
+    if (currentStep === 3) {
       return Boolean(form.roomLayoutId);
+    }
+    if (currentStep === 4) {
+      return true;
+    }
+    if (currentStep === 5) {
+      return form.menuSelection.courses.length > 0;
+    }
+    if (currentStep === 6) {
+      return form.menuSelection.courses.some((course) => course.itemIds.length > 0);
     }
     return true;
   }, [currentStep, form]);
@@ -307,6 +410,10 @@ const EventBuilderPage = () => {
         menuSelection: { courses: [{ courseType: "Course 1", itemIds: [] }] },
         seatingConfig: { tablesFor2: 0, tablesFor4: 0, tablesFor6: 0, longTables: 0, selectedTableIds: [], combinedGroups: [] },
         roomLayoutId: rooms[0]?._id || "",
+        roomFlexibility: "flexible",
+        depositAmount: null,
+        depositDeferred: true,
+        menuStyleId: fallbackMenuTemplates[0]._id,
       });
       setCurrentStep(0);
     } catch (err) {
@@ -320,102 +427,115 @@ const EventBuilderPage = () => {
   const selectedRoom = rooms.find((r) => r._id === form.roomLayoutId);
 
   return (
-    <div className="container py-4">
+    <div className="page page-builder">
+      <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
         <div>
           <p className="eyebrow mb-1">Private Dining Builder</p>
           <h2 className="mb-0">Build your event</h2>
+          <p className="text-muted mb-0">One small step at a time. You can pause and come back.</p>
         </div>
         <div className="flex-grow-1">
-          <Stepper steps={steps} currentStep={currentStep} />
+          <Stepper
+            steps={steps}
+            currentStep={currentStep}
+            onStepClick={(step) => setCurrentStep(step)}
+          />
+        </div>
+        <div className="draft-toggle-wrap">
+          <button
+            className="btn btn-outline-secondary draft-toggle"
+            type="button"
+            onClick={() => setIsDraftOpen((open) => !open)}
+          >
+            Save / Resume
+          </button>
+          {!isDraftOpen && (
+            <div className="draft-hint">
+              <span className="draft-arrow">➜</span>
+              Hey, save your progress here so you don’t have to start from scratch.
+            </div>
+          )}
         </div>
       </div>
 
       {draftNotice && <div className="alert alert-info">{draftNotice}</div>}
-      {localDraftAvailable && localDraft && (
-        <div className="alert alert-light border d-flex justify-content-between align-items-center flex-wrap gap-2">
-          <div>
-            Resume your last draft from{" "}
-            <strong>{new Date(localDraft.updatedAt).toLocaleString()}</strong>.
-          </div>
-          <div className="d-flex gap-2">
-            <button className="btn btn-outline-secondary btn-sm" onClick={() => applyDraft(localDraft)}>
-              Resume
-            </button>
-            <button className="btn btn-outline-danger btn-sm" onClick={clearLocalDraft}>
-              Discard
-            </button>
-          </div>
-        </div>
-      )}
-      <div className="card mb-3">
-        <div className="card-body">
-          <div className="row g-3">
-            <div className="col-12 col-lg-6">
-              <h3 className="h6">Save to Email</h3>
-              <div className="input-group">
-                <input
-                  className="form-control"
-                  type="email"
-                  placeholder="you@email.com"
-                  value={draftEmail}
-                  onChange={(e) => setDraftEmail(e.target.value)}
-                />
-                <button className="btn btn-outline-primary" onClick={handleSaveToEmail}>
-                  {serverDraftId ? "Update Draft" : "Save Draft"}
-                </button>
+      <div className={`draft-drawer ${isDraftOpen ? "open" : ""}`}>
+        <div className="card mb-3">
+          <div className="card-body">
+            <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+              <div>
+                <h3 className="h5 mb-1">Save or resume later (optional)</h3>
+                <p className="text-muted mb-0">Use your email to store progress. We won’t send anything.</p>
               </div>
-              <div className="form-text">Saves your current progress for 30 days.</div>
+              <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setIsDraftOpen(false)}>
+                Close
+              </button>
             </div>
-            <div className="col-12 col-lg-6">
-              <h3 className="h6">Resume from Email</h3>
-              <div className="input-group">
-                <input
-                  className="form-control"
-                  type="email"
-                  placeholder="you@email.com"
-                  value={lookupEmail}
-                  onChange={(e) => setLookupEmail(e.target.value)}
-                />
-                <button className="btn btn-outline-secondary" onClick={handleLookupDrafts}>
-                  Find Drafts
-                </button>
-              </div>
-              {serverDrafts.length > 0 && (
-                <div className="table-responsive mt-2">
-                  <table className="table table-sm align-middle">
-                    <thead>
-                      <tr>
-                        <th>Last Updated</th>
-                        <th>Details</th>
-                        <th></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {serverDrafts.map((draft) => {
-                        const details = draft.data?.form?.eventDetails;
-                        return (
-                          <tr key={draft.id}>
-                            <td>{new Date(draft.updatedAt).toLocaleString()}</td>
-                            <td>
-                              {details?.contactName || "Draft"}{" "}
-                              {details?.eventDate ? `· ${details.eventDate}` : ""}
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-outline-primary btn-sm"
-                                onClick={() => handleLoadServerDraft(draft)}
-                              >
-                                Load
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+            <div className="row g-3">
+              <div className="col-12 col-lg-6">
+                <h3 className="h6">Save my progress</h3>
+                <p className="text-muted small mb-2">Type your email, then press save.</p>
+                <div className="input-group">
+                  <input
+                    className="form-control"
+                    type="email"
+                    placeholder="you@email.com"
+                    value={draftEmail}
+                    onChange={(e) => setDraftEmail(e.target.value)}
+                  />
+                  <button className="btn btn-outline-primary" onClick={handleSaveToEmail}>
+                    {serverDraftId ? "Update Draft" : "Save Draft"}
+                  </button>
                 </div>
-              )}
+                <div className="form-text">Saves your current progress for 30 days.</div>
+              </div>
+              <div className="col-12 col-lg-6">
+                <h3 className="h6">Continue where I left off</h3>
+                <p className="text-muted small mb-2">Enter the same email you saved with.</p>
+                <div className="input-group">
+                  <input
+                    className="form-control"
+                    type="email"
+                    placeholder="you@email.com"
+                    value={lookupEmail}
+                    onChange={(e) => setLookupEmail(e.target.value)}
+                  />
+                  <button className="btn btn-outline-secondary" onClick={handleLookupDrafts}>
+                    Find Drafts
+                  </button>
+                </div>
+                {serverDrafts.length > 0 && (
+                  <div className="draft-list mt-3">
+                    {serverDrafts.map((draft) => {
+                      const details = draft.data?.form?.eventDetails;
+                      return (
+                        <div key={draft.id} className="draft-card">
+                          <div>
+                            <div className="draft-title">
+                              {details?.contactName || "Saved draft"}
+                            </div>
+                            <div className="text-muted small">
+                              Last updated {new Date(draft.updatedAt).toLocaleString()}
+                            </div>
+                            {details?.eventDate && (
+                              <div className="text-muted small">
+                                Event date: {details.eventDate}
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            className="btn btn-outline-primary btn-sm"
+                            onClick={() => handleLoadServerDraft(draft)}
+                          >
+                            Resume
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -428,35 +548,189 @@ const EventBuilderPage = () => {
         <EventDetailsForm
           value={form.eventDetails}
           onChange={(value) => setForm((prev) => ({ ...prev, eventDetails: value }))}
+          mode="contact"
         />
       )}
 
       {currentStep === 1 && (
-        <>
-        <div className="alert alert-light border">
-          <strong>Per-person estimate:</strong> ${pricing.estimatedPricePerPerson.toFixed(2)} based on current selections.
+        <EventDetailsForm
+          value={form.eventDetails}
+          onChange={(value) => setForm((prev) => ({ ...prev, eventDetails: value }))}
+          mode="basics"
+        />
+      )}
+
+      {currentStep === 2 && (
+        <EventDetailsForm
+          value={form.eventDetails}
+          onChange={(value) => setForm((prev) => ({ ...prev, eventDetails: value }))}
+          mode="buyout"
+        />
+      )}
+
+      {currentStep === 3 && (
+        <div className="card">
+          <div className="card-body">
+            <p className="text-muted">Choose your preferred room. We can adjust after review.</p>
+            <div className="row g-3">
+              <div className="col-12 col-lg-6">
+                <label className="form-label">Preferred Room</label>
+                <select
+                  className="form-select"
+                  value={form.roomLayoutId}
+                  onChange={(e) =>
+                    setForm((prev) => ({ ...prev, roomLayoutId: e.target.value }))
+                  }
+                >
+                  {rooms.map((room) => (
+                    <option key={room._id} value={room._id}>
+                      {room.name} (Capacity {room.capacity})
+                    </option>
+                  ))}
+                </select>
+                <div className="form-text">Pick what looks closest to your event.</div>
+              </div>
+              <div className="col-12 col-lg-6 d-flex align-items-end">
+                <div className="form-check form-switch">
+                  <input
+                    className="form-check-input"
+                    type="checkbox"
+                    checked={form.roomFlexibility === "flexible"}
+                    onChange={(e) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        roomFlexibility: e.target.checked ? "flexible" : "specific",
+                      }))
+                    }
+                    id="room-flex"
+                  />
+                  <label className="form-check-label" htmlFor="room-flex">
+                    I am flexible if this room is unavailable
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
+      )}
+
+      {currentStep === 4 && (
+        <div className="card">
+          <div className="card-body">
+            <h3 className="h5 mb-1">Reserve with a Deposit</h3>
+            <p className="text-muted">Placeholder step for future Stripe payments.</p>
+            <div className="deposit-grid">
+              {[250, 500, 1000].map((amount) => (
+                <button
+                  key={amount}
+                  className={`deposit-card ${form.depositAmount === amount && !form.depositDeferred ? "active" : ""}`}
+                  type="button"
+                  onClick={() =>
+                    setForm((prev) => ({
+                      ...prev,
+                      depositAmount: amount,
+                      depositDeferred: false,
+                    }))
+                  }
+                >
+                  <div className="deposit-value">${amount}</div>
+                  <div className="deposit-label">Suggested deposit</div>
+                </button>
+              ))}
+              <button
+                className={`deposit-card ${form.depositDeferred ? "active" : ""}`}
+                type="button"
+                onClick={() =>
+                  setForm((prev) => ({
+                    ...prev,
+                    depositAmount: null,
+                    depositDeferred: true,
+                  }))
+                }
+              >
+                <div className="deposit-value">Decide later</div>
+                <div className="deposit-label">No payment today</div>
+              </button>
+            </div>
+            {!form.depositDeferred && (
+              <div className="form-text mt-2">
+                This is a placeholder. You will not be charged today.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {currentStep === 5 && (
+        <div className="card">
+          <div className="card-body">
+            <h3 className="h5 mb-1">Choose a Menu Style</h3>
+            <p className="text-muted">Pick a starting point. You can customize courses next.</p>
+            <div className="menu-style-grid">
+              {(templates.length > 0 ? templates : fallbackMenuTemplates).map((template) => (
+                <button
+                  key={template._id}
+                  className={`menu-style-card ${form.menuStyleId === template._id ? "active" : ""}`}
+                  type="button"
+                  onClick={() => {
+                    const courses = buildTemplateCourses(template, items);
+                    setForm((prev) => ({
+                      ...prev,
+                      menuStyleId: template._id,
+                      menuSelection: { courses },
+                    }));
+                  }}
+                >
+                  <div className="menu-style-title">{template.name}</div>
+                  <div className="menu-style-desc">{template.description}</div>
+                  <div className="menu-style-courses">
+                    {(template.courses || []).map((course) => (
+                      <span key={course.name} className="menu-style-chip">
+                        {course.name}
+                      </span>
+                    ))}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {currentStep === 6 && (
+        <>
+          <div className="alert alert-light border">
+            <strong>Per-person estimate:</strong> ${pricing.estimatedPricePerPerson.toFixed(2)} based on current selections.
+          </div>
           <MenuBuilder
             categories={categories}
             items={items}
             selection={form.menuSelection}
             onChange={(selection) => setForm((prev) => ({ ...prev, menuSelection: selection }))}
+            showTemplateControls={false}
           />
         </>
       )}
 
-      {currentStep === 2 && (
-        <SeatingConfigurator
-          rooms={rooms}
-          roomLayoutId={form.roomLayoutId}
-          seatingConfig={form.seatingConfig}
-          isBuyout={form.eventDetails.isBuyout}
-          guestCount={form.eventDetails.guestCount}
-          onChange={(roomLayoutId, seatingConfig) => setForm((prev) => ({ ...prev, roomLayoutId, seatingConfig }))}
-        />
+      {currentStep === 7 && (
+        <>
+          <div className="alert alert-light border">
+            <strong>Room:</strong> {selectedRoom?.name || "Select a room"} ·{" "}
+            {form.roomFlexibility === "flexible" ? "Flexible if needed" : "Specific room required"}
+          </div>
+          <SeatingConfigurator
+            rooms={rooms}
+            roomLayoutId={form.roomLayoutId}
+            seatingConfig={form.seatingConfig}
+            isBuyout={form.eventDetails.isBuyout}
+            guestCount={form.eventDetails.guestCount}
+            onChange={(roomLayoutId, seatingConfig) => setForm((prev) => ({ ...prev, roomLayoutId, seatingConfig }))}
+            showRoomSelect={false}
+          />
+        </>
       )}
 
-      {currentStep === 3 && (
+      {currentStep === 8 && (
         <InquiryReview
           eventDetails={form.eventDetails}
           seatingConfig={form.seatingConfig}
@@ -464,14 +738,21 @@ const EventBuilderPage = () => {
           courses={form.menuSelection.courses}
           items={items}
           pricing={pricing}
+          roomFlexibility={form.roomFlexibility}
+          depositAmount={form.depositAmount}
+          depositDeferred={form.depositDeferred}
           onEditStep={(step) => setCurrentStep(step)}
         />
       )}
 
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-        <button className="btn btn-outline-secondary" disabled={currentStep === 0} onClick={() => setCurrentStep((s) => Math.max(0, s - 1))}>
-          Back
-        </button>
+        {currentStep > 0 ? (
+          <button className="btn btn-link text-muted" onClick={() => setCurrentStep((s) => Math.max(0, s - 1))}>
+            Back
+          </button>
+        ) : (
+          <span />
+        )}
         {currentStep < steps.length - 1 && (
           <button className="btn btn-primary" disabled={!canGoNext} onClick={() => setCurrentStep((s) => s + 1)}>
             Next
@@ -485,6 +766,7 @@ const EventBuilderPage = () => {
       </div>
 
       <PricingSummary pricing={pricing} guestCount={form.eventDetails.guestCount} />
+      </div>
     </div>
   );
 };

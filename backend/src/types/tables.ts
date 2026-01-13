@@ -16,6 +16,19 @@ export interface MenuItemRow {
   active: boolean;
 }
 
+export interface MenuTemplateCourseRow {
+  name: string;
+  suggested_item_names?: string[];
+}
+
+export interface MenuTemplateRow {
+  id: string;
+  name: string;
+  description: string;
+  sort_order: number;
+  courses: MenuTemplateCourseRow[];
+}
+
 export interface SeatingConfigRow {
   tables_for_2: number;
   tables_for_4: number;

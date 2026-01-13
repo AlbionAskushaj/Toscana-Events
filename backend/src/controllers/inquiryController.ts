@@ -1,6 +1,8 @@
 import { Request, Response } from "express";
-import { supabase } from "../config/supabase";
+import { supabaseAdmin } from "../config/supabase";
 import { EventInquiryRow, MenuItemRow } from "../types/tables";
+import { sendEmail } from "../services/mailService";
+import { buildInquiryStatusEmail, buildInquirySubmittedEmail } from "../services/emailTemplates";
 
 const SERVICE_CHARGE_RATE = 0.18;
 const TAX_RATE = 0.05;
@@ -72,7 +74,7 @@ async function calculatePricing(menuSelection: { courses: { itemIds: string[] }[
   let items: MenuItemRow[] = [];
 
   if (itemIds.length > 0) {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("menu_items")
       .select("*")
       .in("id", itemIds);
@@ -146,7 +148,7 @@ export const createInquiry = async (req: Request, res: Response) => {
           }
         : pricing;
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("event_inquiries")
       .insert({
         status: "new",
@@ -191,7 +193,37 @@ export const createInquiry = async (req: Request, res: Response) => {
 
     if (error) throw error;
 
-    res.status(201).json(toInquiry(data as EventInquiryRow));
+    const inquiry = toInquiry(data as EventInquiryRow);
+    let roomName: string | undefined;
+    try {
+      if (inquiry.roomLayoutId) {
+        const { data: roomData } = await supabaseAdmin
+          .from("room_layouts")
+          .select("name")
+          .eq("id", inquiry.roomLayoutId)
+          .maybeSingle();
+        roomName = roomData?.name;
+      }
+    } catch (roomErr) {
+      console.warn("[email] Failed to load room name", roomErr);
+    }
+
+    try {
+      const { subject, html, text } = buildInquirySubmittedEmail({
+        inquiry,
+        roomName,
+      });
+      await sendEmail({
+        to: inquiry.contactEmail,
+        subject,
+        html,
+        text,
+      });
+    } catch (emailErr) {
+      console.error("[email] Failed to send inquiry confirmation", emailErr);
+    }
+
+    res.status(201).json(inquiry);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to create inquiry" });
@@ -200,7 +232,7 @@ export const createInquiry = async (req: Request, res: Response) => {
 
 export const listInquiries = async (_req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("event_inquiries")
       .select("*")
       .order("created_at", { ascending: false });
@@ -214,7 +246,7 @@ export const listInquiries = async (_req: Request, res: Response) => {
 
 export const getInquiry = async (req: Request, res: Response) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("event_inquiries")
       .select("*")
       .eq("id", req.params.id)
@@ -244,7 +276,7 @@ export const updateInquiryStatus = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Invalid status value" });
   }
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("event_inquiries")
       .update({ status })
       .eq("id", req.params.id)
@@ -262,7 +294,20 @@ export const updateInquiryStatus = async (req: Request, res: Response) => {
       return res.status(404).json({ message: "Inquiry not found" });
     }
 
-    res.json(toInquiry(data));
+    const inquiry = toInquiry(data);
+    try {
+      const { subject, html, text } = buildInquiryStatusEmail({ inquiry, status });
+      await sendEmail({
+        to: inquiry.contactEmail,
+        subject,
+        html,
+        text,
+      });
+    } catch (emailErr) {
+      console.error("[email] Failed to send status email", emailErr);
+    }
+
+    res.json(inquiry);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to update inquiry status" });

@@ -1,12 +1,14 @@
 import { useEffect, useState } from "react";
-import { getInquiries, updateInquiryStatus } from "../api";
-import { EventInquiry, InquiryStatus } from "../types";
+import { adminGetInquiries, adminUpdateInquiryStatus, getMenuItems, getRooms } from "../api";
+import { EventInquiry, InquiryStatus, MenuItem, RoomLayout } from "../types";
 import { Link } from "react-router-dom";
 
 const statusOptions: InquiryStatus[] = ["new", "reviewing", "approved", "declined"];
 
 const AdminInquiriesPage = () => {
   const [inquiries, setInquiries] = useState<EventInquiry[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [rooms, setRooms] = useState<RoomLayout[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState("");
 
@@ -16,8 +18,14 @@ const AdminInquiriesPage = () => {
 
   const load = async () => {
     try {
-      const data = await getInquiries();
+      const [data, itemData, roomData] = await Promise.all([
+        adminGetInquiries(),
+        getMenuItems(),
+        getRooms(),
+      ]);
       setInquiries(data);
+      setMenuItems(itemData);
+      setRooms(roomData);
     } catch (err) {
       console.error(err);
       setError("Failed to load inquiries");
@@ -26,7 +34,7 @@ const AdminInquiriesPage = () => {
 
   const updateStatus = async (id: string, status: InquiryStatus) => {
     try {
-      await updateInquiryStatus(id, status);
+      await adminUpdateInquiryStatus(id, status);
       await load();
     } catch (err) {
       console.error(err);
@@ -35,9 +43,12 @@ const AdminInquiriesPage = () => {
   };
 
   const selected = inquiries.find((i) => i._id === selectedId);
+  const menuItemById = new Map(menuItems.map((item) => [item._id, item.name]));
+  const roomById = new Map(rooms.map((room) => [room._id, room.name]));
 
   return (
-    <div className="container py-4">
+    <div className="page page-admin-inquiries">
+      <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
         <div>
           <p className="eyebrow mb-1">Admin</p>
@@ -49,6 +60,9 @@ const AdminInquiriesPage = () => {
           </Link>
           <Link className="btn btn-outline-secondary" to="/admin/menu">
             Menu
+          </Link>
+          <Link className="btn btn-outline-secondary" to="/admin/templates">
+            Templates
           </Link>
           <Link className="btn btn-outline-secondary" to="/admin/rooms">
             Rooms
@@ -120,12 +134,15 @@ const AdminInquiriesPage = () => {
           <h4>Menu</h4>
           {selected.menuSelection.courses.map((course) => (
             <div key={course.courseType} className="text-muted">
-              <strong>{course.courseType.toUpperCase()}</strong>: {course.itemIds.join(", ")}
+              <strong>{course.courseType.toUpperCase()}</strong>:{" "}
+              {course.itemIds
+                .map((id) => menuItemById.get(id) || id)
+                .join(", ")}
             </div>
           ))}
           <h4>Seating</h4>
           <ul>
-            <li>Room: {selected.roomLayoutId}</li>
+            <li>Room: {roomById.get(selected.roomLayoutId) || selected.roomLayoutId}</li>
             <li>Tables for 2: {selected.seatingConfig.tablesFor2}</li>
             <li>Tables for 4: {selected.seatingConfig.tablesFor4}</li>
             <li>Tables for 6: {selected.seatingConfig.tablesFor6}</li>
@@ -138,6 +155,7 @@ const AdminInquiriesPage = () => {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

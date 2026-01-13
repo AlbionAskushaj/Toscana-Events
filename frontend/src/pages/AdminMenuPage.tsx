@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import {
-  createMenuCategory,
-  createMenuItem,
-  dedupeMenuItems,
-  deleteMenuCategory,
-  deleteMenuItem,
+  adminCreateMenuCategory,
+  adminCreateMenuItem,
+  adminDedupeMenuItems,
+  adminDeleteMenuCategory,
+  adminDeleteMenuItem,
   getMenuCategories,
   getMenuItems,
-  updateMenuCategory,
-  updateMenuItem,
+  adminUpdateMenuCategory,
+  adminUpdateMenuItem,
 } from "../api";
 import { MenuCategory, MenuItem } from "../types";
 import { Link } from "react-router-dom";
@@ -46,7 +46,6 @@ const AdminMenuPage = () => {
     isGlutenFree: false,
     active: true,
   });
-
   useEffect(() => {
     load();
   }, []);
@@ -82,6 +81,7 @@ const AdminMenuPage = () => {
     setItemEdits(edits);
   }, [items]);
 
+
   const load = async () => {
     setLoading(true);
     setError("");
@@ -104,7 +104,7 @@ const AdminMenuPage = () => {
       return;
     }
     try {
-      await updateMenuCategory(id, edit);
+      await adminUpdateMenuCategory(id, edit);
       await load();
       setNotice("Category updated");
     } catch (err) {
@@ -116,7 +116,7 @@ const AdminMenuPage = () => {
   const handleCategoryDelete = async (id: string) => {
     if (!confirm("Delete this category and its items?")) return;
     try {
-      await deleteMenuCategory(id);
+      await adminDeleteMenuCategory(id);
       await load();
       setNotice("Category deleted");
     } catch (err) {
@@ -131,7 +131,7 @@ const AdminMenuPage = () => {
       return;
     }
     try {
-      await createMenuCategory(newCategory);
+      await adminCreateMenuCategory(newCategory);
       setNewCategory({ name: "", sortOrder: 0 });
       await load();
       setNotice("Category added");
@@ -141,6 +141,7 @@ const AdminMenuPage = () => {
     }
   };
 
+
   const handleItemSave = async (id: string) => {
     const edit = itemEdits[id];
     if (!edit?.name || !edit?.categoryId) {
@@ -148,7 +149,7 @@ const AdminMenuPage = () => {
       return;
     }
     try {
-      await updateMenuItem(id, edit);
+      await adminUpdateMenuItem(id, edit);
       await load();
       setNotice("Item updated");
     } catch (err) {
@@ -160,7 +161,7 @@ const AdminMenuPage = () => {
   const handleItemDelete = async (id: string) => {
     if (!confirm("Delete this menu item?")) return;
     try {
-      await deleteMenuItem(id);
+      await adminDeleteMenuItem(id);
       await load();
       setNotice("Item deleted");
     } catch (err) {
@@ -175,7 +176,7 @@ const AdminMenuPage = () => {
       return;
     }
     try {
-      await createMenuItem(newItem);
+      await adminCreateMenuItem(newItem);
       setNewItem({
         categoryId: "",
         name: "",
@@ -197,7 +198,7 @@ const AdminMenuPage = () => {
   const handleDedupe = async (apply: boolean) => {
     setError("");
     try {
-      const result = await dedupeMenuItems(!apply ? true : false);
+      const result = await adminDedupeMenuItems(!apply ? true : false);
       setDedupeSummary({ totalItems: result.totalItems, duplicateCount: result.duplicateCount });
       if (apply) {
         await load();
@@ -210,7 +211,8 @@ const AdminMenuPage = () => {
   };
 
   return (
-    <div className="container py-4 admin-menu">
+    <div className="page page-admin-menu">
+      <div className="container py-4 admin-menu">
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
         <div>
           <p className="eyebrow mb-1">Admin</p>
@@ -222,6 +224,9 @@ const AdminMenuPage = () => {
           </Link>
           <Link className="btn btn-primary" to="/admin/menu">
             Menu
+          </Link>
+          <Link className="btn btn-outline-secondary" to="/admin/templates">
+            Templates
           </Link>
           <Link className="btn btn-outline-secondary" to="/admin/rooms">
             Rooms
@@ -634,6 +639,7 @@ const AdminMenuPage = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
