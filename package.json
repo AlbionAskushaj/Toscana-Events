@@ -2,6 +2,9 @@
   "name": "toscana-private-dining",
   "private": true,
   "version": "1.0.0",
+  "engines": {
+    "node": "20.x"
+  },
   "workspaces": ["frontend", "backend"],
   "scripts": {
     "dev": "concurrently \"npm:dev --workspace backend\" \"npm:dev --workspace frontend\"",
