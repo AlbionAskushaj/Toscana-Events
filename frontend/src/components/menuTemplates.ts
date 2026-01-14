@@ -57,7 +57,7 @@ const findSuggestedItemId = (items: MenuItem[], name: string) => {
 };
 
 export const buildTemplateCourses = (template: MenuTemplate, items: MenuItem[]): MenuSelectionCourse[] => {
-  const courses = (template.courses || []).map((course) => ({
+  const courses: MenuSelectionCourse[] = (template.courses || []).map((course) => ({
     courseType: course.name,
     itemIds: [],
   }));

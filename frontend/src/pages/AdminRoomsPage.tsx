@@ -210,7 +210,7 @@ const AdminRoomsPage = () => {
       ...prev,
       areas: prev.areas.map((area) =>
         area.id === areaId
-          ? { ...area, lines: (area.lines || []).filter((_, idx) => idx !== index) }
+          ? { ...area, lines: (area.lines || []).filter((_line: AreaLine, idx: number) => idx !== index) }
           : area
       ),
     }));
@@ -706,14 +706,14 @@ const GridCanvas = ({
       onMouseLeave={handleMouseUp}
     >
       <svg className="grid-lines" viewBox={`0 0 ${gridSize} ${gridSize}`}>
-        {[...Array(gridSize + 1)].map((_, idx) => (
+        {[...Array(gridSize + 1)].map((_: undefined, idx: number) => (
           <line key={`h-${idx}`} x1={0} y1={idx} x2={gridSize} y2={idx} />
         ))}
-        {[...Array(gridSize + 1)].map((_, idx) => (
+        {[...Array(gridSize + 1)].map((_: undefined, idx: number) => (
           <line key={`v-${idx}`} x1={idx} y1={0} x2={idx} y2={gridSize} />
         ))}
         {areas.flatMap((area) =>
-          (area.lines || []).map((line, idx) => (
+          (area.lines || []).map((line: AreaLine, idx: number) => (
             <line
               key={`${area.id}-line-${idx}`}
               x1={line.x1 + 0.5}

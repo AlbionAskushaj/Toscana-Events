@@ -11,9 +11,12 @@ import {
   CreateInquiryPayload,
   MenuTemplate,
   MenuTemplateCourse,
+  TableArea,
+  TableMeta,
+  AreaLine,
 } from "@shared/types";
 
-export type { MenuCategory, MenuItem, RoomLayout, EventInquiry, InquiryStatus, PricingSummary, SeatingConfig, MenuSelectionCourse, CourseType, CreateInquiryPayload, MenuTemplate, MenuTemplateCourse };
+export type { MenuCategory, MenuItem, RoomLayout, EventInquiry, InquiryStatus, PricingSummary, SeatingConfig, MenuSelectionCourse, CourseType, CreateInquiryPayload, MenuTemplate, MenuTemplateCourse, TableArea, TableMeta, AreaLine };
 
 export interface EventDetailsInput {
   contactName: string;
