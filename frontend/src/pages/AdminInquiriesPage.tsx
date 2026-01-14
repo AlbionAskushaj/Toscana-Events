@@ -194,6 +194,14 @@ const AdminInquiriesPage = () => {
             {selected.eventDate} at {selected.eventTime} — {selected.guestCount} guests
           </p>
           <p>Occasion: {selected.occasionType}</p>
+          {selected.isBuyout && (
+            <p>
+              <strong>Buyout Details:</strong>{" "}
+              {selected.specialRequests
+                ?.split("\n")
+                .find((line) => line.startsWith("Buyout details:")) || "Provided in special requests."}
+            </p>
+          )}
           <h4>Menu</h4>
           {selected.menuSelection.courses.map((course) => (
             <div key={course.courseType} className="text-muted">

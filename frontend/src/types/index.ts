@@ -27,6 +27,7 @@ export interface EventDetailsInput {
   specialRequests: string;
   isBuyout?: boolean;
   buyoutAmount?: number;
+  buyoutDetails?: string;
 }
 
 export interface InquiryFormState {

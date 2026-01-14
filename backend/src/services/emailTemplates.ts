@@ -14,25 +14,47 @@ export const buildInquirySubmittedEmail = (params: {
   inquiry: EventInquiry;
   roomName?: string;
   templateName?: string;
+  admin?: boolean;
 }) => {
-  const { inquiry, roomName, templateName } = params;
+  const { inquiry, roomName, templateName, admin } = params;
+  const depositInfo = (() => {
+    const count = inquiry.guestCount || 0;
+    if (count < 10) return null;
+    if (count <= 15) {
+      return {
+        amount: 200,
+        link: "https://buy.stripe.com/eVq9ASeGE7p18XV5N23oA01",
+      };
+    }
+    if (count <= 30) {
+      return {
+        amount: 500,
+        link: "https://buy.stripe.com/dRm6oGgOMaBd0rp6R63oA02",
+      };
+    }
+    return {
+      amount: 1000,
+      link: "https://buy.stripe.com/6oU00idCA5gT0rpcbq3oA03",
+    };
+  })();
   const eventDate = inquiry.eventDate || "TBD";
   const eventTime = inquiry.eventTime || "TBD";
   const guestCount = inquiry.guestCount || 0;
   const menuSummary = courseSummary(inquiry.menuSelection.courses);
   const roomLabel = roomName || inquiry.roomLayoutId || "TBD";
   const styleLabel = templateName || "Custom";
+  const reviewLink = "https://admin.toscanagrill.ca/inquiries";
 
-  const subject = "We received your private dining inquiry";
+  const subject = admin ? "New private dining inquiry submitted" : "We received your private dining inquiry";
   const html = `
   <div style="font-family: 'Cormorant Garamond', Georgia, serif; background:#0b0907; color:#ffffff; padding:32px;">
     <div style="max-width:640px; margin:0 auto; border:1px solid #2e231a; border-radius:16px; background:#14100c; padding:28px;">
       <div style="text-transform:uppercase; letter-spacing:0.28em; color:#d7b36a; font-size:12px;">Toscana Italian Grill</div>
       <h1 style="margin:12px 0 8px; font-family:'Cinzel', Georgia, serif; color:#f0d9a2; font-size:26px;">
-        Your inquiry is in
+        ${admin ? "New inquiry received" : "Your inquiry is in"}
       </h1>
       <p style="color:#e6d8c4; margin:0 0 20px;">
-        Thanks, ${inquiry.contactName}. We’ll review your request and reach out soon.
+        ${admin ? `New inquiry from ${inquiry.contactName}.` : `Thanks, ${inquiry.contactName}. We’ll review your request and reach out soon.`}
       </p>
       <div style="border-top:1px solid #2e231a; padding-top:16px; margin-top:12px;">
         <div style="display:flex; flex-wrap:wrap; gap:16px;">
@@ -59,14 +81,26 @@ export const buildInquirySubmittedEmail = (params: {
           Per person: ${formatCurrency(inquiry.estimatedPricePerPerson)} · Total: ${formatCurrency(inquiry.estimatedTotal)}
         </div>
       </div>
-      <p style="color:#e6d8c4; margin-top:20px;">We’ll confirm availability and next steps by email or phone.</p>
+      ${
+        admin
+          ? `<p style="color:#e6d8c4; margin-top:20px;">Review in the admin panel: <a href="${reviewLink}" style="color:#f0d9a2;">${reviewLink}</a></p>`
+          : depositInfo
+          ? `<p style="color:#e6d8c4; margin-top:20px;">A $${depositInfo.amount} deposit is required within 3 days to hold your booking. Pay here: <a href="${depositInfo.link}" style="color:#f0d9a2;">${depositInfo.link}</a></p>`
+          : `<p style="color:#e6d8c4; margin-top:20px;">No deposit is required for events under 10 guests. We’ll confirm availability and next steps by email or phone.</p>`
+      }
     </div>
   </div>
   `;
 
-  const text = `Toscana Italian Grill\n\nYour inquiry is in.\n\nEvent: ${eventDate} at ${eventTime}\nGuests: ${guestCount}\nOccasion: ${inquiry.occasionType || "TBD"}\nRoom: ${roomLabel}\nMenu style: ${styleLabel}\n\nMenu selections:\n${menuSummary || "Menu selections will be finalized with the team."}\n\nEstimate: Per person ${formatCurrency(
+  const text = `${admin ? "New private dining inquiry submitted." : "Your inquiry is in."}\n\nEvent: ${eventDate} at ${eventTime}\nGuests: ${guestCount}\nOccasion: ${inquiry.occasionType || "TBD"}\nRoom: ${roomLabel}\nMenu style: ${styleLabel}\n\nMenu selections:\n${menuSummary || "Menu selections will be finalized with the team."}\n\nEstimate: Per person ${formatCurrency(
     inquiry.estimatedPricePerPerson
-  )} · Total ${formatCurrency(inquiry.estimatedTotal)}\n\nWe’ll confirm availability and next steps by email or phone.`;
+  )} · Total ${formatCurrency(inquiry.estimatedTotal)}${
+    admin
+      ? `\n\nReview: ${reviewLink}`
+      : depositInfo
+      ? `\n\nDeposit required: $${depositInfo.amount}. Pay here: ${depositInfo.link}`
+      : "\n\nNo deposit is required for events under 10 guests. We’ll confirm availability and next steps by email or phone."
+  }`;
 
   return { subject, html, text };
 };

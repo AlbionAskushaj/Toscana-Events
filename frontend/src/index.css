@@ -874,8 +874,8 @@ select:-webkit-autofill {
 }
 
 .seating-grid .grid-lines line {
-  stroke: rgba(215, 179, 106, 0.45);
-  stroke-width: 0.04;
+  stroke: rgba(215, 179, 106, 0.55);
+  stroke-width: 0.05;
 }
 
 .grid-area-line {

@@ -157,15 +157,14 @@ const EventDetailsForm: React.FC<Props> = ({ value, onChange, mode }) => {
               </div>
               {value.isBuyout && (
                 <div className="col-12 col-md-6">
-                  <label className="form-label">Buyout Total (optional)</label>
-                  <input
+                  <label className="form-label">Please provide details about your event</label>
+                  <textarea
                     className="form-control"
-                    type="number"
-                    min={0}
-                    value={value.buyoutAmount || ""}
-                    onChange={(e) => handleChange("buyoutAmount", Number(e.target.value))}
-                    placeholder="Enter total buyout amount"
+                    value={value.buyoutDetails || ""}
+                    onChange={(e) => handleChange("buyoutDetails", e.target.value)}
+                    placeholder="Share details, timing, or priorities"
                   />
+                  <div className="form-text">Minimum spend will be required for buyouts.</div>
                 </div>
               )}
             </>

@@ -224,18 +224,34 @@ export const createInquiry = async (req: Request, res: Response) => {
     }
 
     try {
-      const { subject, html, text } = buildInquirySubmittedEmail({
+      const guestEmail = buildInquirySubmittedEmail({
         inquiry,
         roomName,
       });
       await sendEmail({
         to: inquiry.contactEmail,
-        subject,
-        html,
-        text,
+        subject: guestEmail.subject,
+        html: guestEmail.html,
+        text: guestEmail.text,
       });
     } catch (emailErr) {
       console.error("[email] Failed to send inquiry confirmation", emailErr);
+    }
+
+    try {
+      const adminEmail = buildInquirySubmittedEmail({
+        inquiry,
+        roomName,
+        admin: true,
+      });
+      await sendEmail({
+        to: "info@toscanagrill.ca",
+        subject: adminEmail.subject,
+        html: adminEmail.html,
+        text: adminEmail.text,
+      });
+    } catch (emailErr) {
+      console.error("[email] Failed to send admin inquiry notification", emailErr);
     }
 
     res.status(201).json(inquiry);

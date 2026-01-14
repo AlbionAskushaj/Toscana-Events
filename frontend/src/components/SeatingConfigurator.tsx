@@ -21,7 +21,7 @@ const SeatingConfigurator: React.FC<Props> = ({
   onChange,
   showRoomSelect = true,
 }) => {
-  const [autoAssign, setAutoAssign] = useState(true);
+  const [autoAssign, setAutoAssign] = useState(false);
   const availableRooms = rooms;
   const selectedRoom = rooms.find((room) => room._id === roomLayoutId) || rooms[0];
 
@@ -177,11 +177,14 @@ const SeatingConfigurator: React.FC<Props> = ({
           {groupedTables.size === 0 && <div className="text-muted">No tables available.</div>}
           {Array.from(groupedTables.entries()).map(([area, ids]) => {
             const selectedInArea = ids.filter((id) => selectedTableIds.includes(id));
+            const selectedLabels = selectedInArea
+              .map((id) => tableById.get(id)?.label || id)
+              .filter(Boolean);
             return (
               <div key={area} className="mb-2">
                 <strong className="text-muted text-uppercase small">{area}</strong>
                 <div>
-                  {selectedInArea.length > 0 ? selectedInArea.join(", ") : <span className="text-muted">None</span>}
+                  {selectedLabels.length > 0 ? selectedLabels.join(", ") : <span className="text-muted">None</span>}
                 </div>
               </div>
             );

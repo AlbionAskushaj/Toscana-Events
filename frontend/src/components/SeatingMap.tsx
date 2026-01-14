@@ -60,7 +60,11 @@ const SeatingMap: React.FC<Props> = ({ room, seatingConfig, isBuyout, onChange }
           {isBuyout && <span className="badge text-bg-warning">Buyout editor coming next</span>}
         </div>
       </div>
-      <div ref={containerRef} className="seating-grid" style={{ height: size }}>
+      <div
+        ref={containerRef}
+        className="seating-grid"
+        style={{ width: size, height: size, margin: "0 auto" }}
+      >
         <svg className="grid-lines" viewBox={`0 0 ${gridSize} ${gridSize}`}>
           {[...Array(gridSize + 1)].map((_, idx) => (
             <line key={`h-${idx}`} x1={0} y1={idx} x2={gridSize} y2={idx} />

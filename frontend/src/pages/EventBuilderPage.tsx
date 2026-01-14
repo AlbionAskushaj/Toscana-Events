@@ -59,6 +59,7 @@ const initialEventDetails: EventDetailsInput = {
   specialRequests: "",
   isBuyout: false,
   buyoutAmount: undefined,
+  buyoutDetails: "",
 };
 
 const initialPricing: Pricing = {
@@ -406,6 +407,14 @@ const EventBuilderPage = () => {
       setSubmitting(false);
       return;
     }
+    const buyoutDetails = form.eventDetails.buyoutDetails?.trim();
+    const specialRequests = [
+      form.eventDetails.specialRequests?.trim(),
+      buyoutDetails ? `Buyout details: ${buyoutDetails}` : "",
+    ]
+      .filter(Boolean)
+      .join("\n");
+
     const payload: CreateInquiryPayload = {
       isBuyout: form.eventDetails.isBuyout,
       buyoutAmount: form.eventDetails.buyoutAmount,
@@ -420,7 +429,7 @@ const EventBuilderPage = () => {
       roomLayoutId: form.roomLayoutId,
       menuSelection: form.menuSelection,
       dietaryNotes: form.eventDetails.dietaryNotes,
-      specialRequests: form.eventDetails.specialRequests,
+      specialRequests,
     };
 
     const depositInfo = (() => {
