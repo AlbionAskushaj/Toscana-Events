@@ -20,16 +20,6 @@ const LandingPage = () => {
                   No account required to craft a proposal.
                 </span>
               </div>
-              <div className="hero-metrics mt-5">
-                <div>
-                  <div className="metric-value">4</div>
-                  <div className="metric-label">Steps to submit</div>
-                </div>
-                <div>
-                  <div className="metric-value">20x20</div>
-                  <div className="metric-label">Seating grid</div>
-                </div>
-              </div>
             </div>
             <div className="col-12 col-lg-5">
               <div className="hero-panel-wrap">

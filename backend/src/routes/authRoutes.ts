@@ -19,7 +19,8 @@ const parseCookies = (header: string | undefined) =>
 
 const setAuthCookies = (accessToken: string, refreshToken: string) => {
   const secure = process.env.NODE_ENV === "production";
-  const base = `Path=/; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}`;
+  const sameSite = secure ? "None" : "Lax";
+  const base = `Path=/; HttpOnly; SameSite=${sameSite}${secure ? "; Secure" : ""}`;
   return [
     `sb-access-token=${encodeURIComponent(accessToken)}; ${base}`,
     `sb-refresh-token=${encodeURIComponent(refreshToken)}; ${base}`,
@@ -28,7 +29,8 @@ const setAuthCookies = (accessToken: string, refreshToken: string) => {
 
 const clearAuthCookies = () => {
   const secure = process.env.NODE_ENV === "production";
-  const base = `Path=/; HttpOnly; SameSite=Lax${secure ? "; Secure" : ""}; Max-Age=0`;
+  const sameSite = secure ? "None" : "Lax";
+  const base = `Path=/; HttpOnly; SameSite=${sameSite}${secure ? "; Secure" : ""}; Max-Age=0`;
   return [
     `sb-access-token=; ${base}`,
     `sb-refresh-token=; ${base}`,

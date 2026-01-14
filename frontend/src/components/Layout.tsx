@@ -15,7 +15,8 @@ const Layout: React.FC<Props> = ({ children }) => {
       <header className="navbar navbar-expand-lg navbar-dark nav-gilded sticky-top">
         <div className="container">
           <Link to="/" className="navbar-brand fw-semibold">
-            Toscana Italian Grill · Private Dining Builder
+            <span className="brand-full">Toscana Italian Grill · Private Dining Builder</span>
+            <span className="brand-short">Toscana · Events</span>
           </Link>
           <nav className="navbar-nav ms-auto gap-2">
             <Link className={`nav-link ${location.pathname === "/" ? "active fw-semibold" : ""}`} to="/">

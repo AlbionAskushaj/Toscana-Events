@@ -71,6 +71,10 @@ a { color: inherit; }
   font-size: 12px;
 }
 
+.brand-short {
+  display: none;
+}
+
 .nav-gilded .nav-link.active,
 .nav-gilded .nav-link:hover {
   color: var(--gold-2);
@@ -211,24 +215,9 @@ select:-webkit-autofill {
   min-height: 100vh;
 }
 
-.page::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background-image: var(--page-bg);
-  background-size: 100% 116.6667%;
-  background-position: top center;
-  background-repeat: no-repeat;
-  filter: saturate(1) brightness(0.95);
-  z-index: 0;
-}
-
+.page::before,
 .page::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(7, 6, 5, 0.7), rgba(7, 6, 5, 0.55) 35%, rgba(7, 6, 5, 0.75) 100%);
-  z-index: 0;
+  content: none;
 }
 
 .page > * {
@@ -236,13 +225,13 @@ select:-webkit-autofill {
   z-index: 1;
 }
 
-.page-landing { --page-bg: url("/assets/homepage.jpg"); }
-.page-builder { --page-bg: url("/assets/sunset_vineyard.webp"); }
-.page-admin-inquiries { --page-bg: url("/assets/Whitemansion_sunset.webp"); }
-.page-admin-menu { --page-bg: url("/assets/zoomed_out.webp"); }
-.page-admin-rooms { --page-bg: url("/assets/Whitemansion_sunset.webp"); }
-.page-admin-login { --page-bg: url("/assets/zoomed_out.webp"); }
-.page-admin-templates { --page-bg: url("/assets/zoomed_out.webp"); }
+.page-landing { --page-bg: none; }
+.page-builder { --page-bg: none; }
+.page-admin-inquiries { --page-bg: none; }
+.page-admin-menu { --page-bg: none; }
+.page-admin-rooms { --page-bg: none; }
+.page-admin-login { --page-bg: none; }
+.page-admin-templates { --page-bg: none; }
 
 .hero-title {
   font-size: clamp(2.6rem, 4vw, 3.6rem);
@@ -1015,6 +1004,29 @@ select:-webkit-autofill {
 }
 
 @media (max-width: 768px) {
+  .navbar-brand {
+    font-size: 12px;
+    letter-spacing: 0.02em;
+  }
+
+  .brand-full {
+    display: none;
+  }
+
+  .brand-short {
+    display: inline;
+  }
+
+  .nav-gilded .navbar-nav {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    gap: 0.75rem;
+  }
+
+  .nav-gilded .nav-link {
+    padding: 0.25rem 0.35rem;
+  }
+
   .page-header {
     flex-direction: column;
     align-items: flex-start;
@@ -1114,6 +1126,10 @@ select:-webkit-autofill {
 }
 
 @media (max-width: 480px) {
+  .navbar-brand {
+    font-size: 11px;
+  }
+
   .hero-subtitle {
     font-size: 0.95rem;
   }
