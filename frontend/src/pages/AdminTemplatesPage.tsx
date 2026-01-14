@@ -172,6 +172,15 @@ const AdminTemplatesPage = () => {
     setDrafts((prev) => ({ ...prev, [templateId]: { ...prev[templateId], courses: update(prev[templateId].courses) } }));
   };
 
+  const toggleTemplate = (id: string) => {
+    setOpenTemplates((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const toggleCategory = (id: string) => {
     setOpenCategories((prev) => {
       const next = new Set(prev);
@@ -540,11 +549,3 @@ const AdminTemplatesPage = () => {
 };
 
 export default AdminTemplatesPage;
-  const toggleTemplate = (id: string) => {
-    setOpenTemplates((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };

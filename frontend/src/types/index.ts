@@ -37,7 +37,5 @@ export interface InquiryFormState {
   seatingConfig: SeatingConfig;
   roomLayoutId: string;
   roomFlexibility: "flexible" | "specific";
-  depositAmount: number | null;
-  depositDeferred: boolean;
   menuStyleId: string;
 }

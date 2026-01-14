@@ -9,8 +9,6 @@ interface Props {
   items: MenuItem[];
   pricing: PricingSummary;
   roomFlexibility: "flexible" | "specific";
-  depositAmount: number | null;
-  depositDeferred: boolean;
   onEditStep?: (step: number) => void;
 }
 
@@ -22,8 +20,6 @@ const InquiryReview: React.FC<Props> = ({
   items,
   pricing,
   roomFlexibility,
-  depositAmount,
-  depositDeferred,
   onEditStep,
 }) => {
   const findItemName = (id: string) => items.find((i) => i._id === id)?.name || id;
@@ -58,7 +54,7 @@ const InquiryReview: React.FC<Props> = ({
             <div className="d-flex justify-content-between align-items-center">
               <h4 className="h6 mb-0">Room & Seating</h4>
               {onEditStep && (
-                <button className="btn btn-link btn-sm" type="button" onClick={() => onEditStep(7)}>
+                <button className="btn btn-link btn-sm" type="button" onClick={() => onEditStep(6)}>
                   Edit
                 </button>
               )}
@@ -76,27 +72,9 @@ const InquiryReview: React.FC<Props> = ({
 
         <div className="mt-4">
           <div className="d-flex justify-content-between align-items-center">
-            <h4 className="h6 mb-0">Deposit</h4>
-            {onEditStep && (
-              <button className="btn btn-link btn-sm" type="button" onClick={() => onEditStep(4)}>
-                Edit
-              </button>
-            )}
-          </div>
-          <div className="text-muted">
-            {depositDeferred
-              ? "Decide later (no payment today)."
-              : depositAmount
-              ? `Placeholder deposit selected: $${depositAmount}.`
-              : "No deposit selected."}
-          </div>
-        </div>
-
-        <div className="mt-4">
-          <div className="d-flex justify-content-between align-items-center">
             <h4 className="h6 mb-0">Menu Selection</h4>
             {onEditStep && (
-              <button className="btn btn-link btn-sm" type="button" onClick={() => onEditStep(6)}>
+              <button className="btn btn-link btn-sm" type="button" onClick={() => onEditStep(5)}>
                 Edit
               </button>
             )}

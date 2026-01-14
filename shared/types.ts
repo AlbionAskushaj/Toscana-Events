@@ -41,7 +41,7 @@ export interface RoomLayout {
   gridSize?: number;
 }
 
-export type InquiryStatus = "new" | "reviewing" | "approved" | "declined";
+export type InquiryStatus = "new" | "reviewing" | "approved" | "declined" | "completed";
 
 export interface SeatingConfig {
   tablesFor2: number;

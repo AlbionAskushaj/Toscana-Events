@@ -3,7 +3,7 @@ import { adminGetInquiries, adminUpdateInquiryStatus, getMenuItems, getRooms } f
 import { EventInquiry, InquiryStatus, MenuItem, RoomLayout } from "../types";
 import { Link } from "react-router-dom";
 
-const statusOptions: InquiryStatus[] = ["new", "reviewing", "approved", "declined"];
+const statusOptions: InquiryStatus[] = ["new", "reviewing", "approved", "declined", "completed"];
 
 const AdminInquiriesPage = () => {
   const [inquiries, setInquiries] = useState<EventInquiry[]>([]);
@@ -45,6 +45,15 @@ const AdminInquiriesPage = () => {
   const selected = inquiries.find((i) => i._id === selectedId);
   const menuItemById = new Map(menuItems.map((item) => [item._id, item.name]));
   const roomById = new Map(rooms.map((room) => [room._id, room.name]));
+  const byEventDate = (list: EventInquiry[]) =>
+    [...list].sort((a, b) => {
+      const left = `${a.eventDate || ""} ${a.eventTime || ""}`.trim();
+      const right = `${b.eventDate || ""} ${b.eventTime || ""}`.trim();
+      return left.localeCompare(right);
+    });
+
+  const activeInquiries = byEventDate(inquiries.filter((inq) => inq.status !== "completed"));
+  const archivedInquiries = byEventDate(inquiries.filter((inq) => inq.status === "completed"));
 
   return (
     <div className="page page-admin-inquiries">
@@ -75,24 +84,22 @@ const AdminInquiriesPage = () => {
           <table className="table table-hover align-middle mb-0">
           <thead>
             <tr>
-              <th>Created</th>
+              <th>Event Date</th>
               <th>Contact</th>
-              <th>Event</th>
               <th>Guests</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {inquiries.map((inq) => (
+            {activeInquiries.map((inq) => (
               <tr key={inq._id} className={selectedId === inq._id ? "selected" : ""}>
-                <td>{new Date(inq.createdAt).toLocaleString()}</td>
+                <td>
+                  {inq.eventDate} @ {inq.eventTime}
+                </td>
                 <td>
                   <strong>{inq.contactName}</strong>
                   <div className="text-muted">{inq.contactEmail}</div>
-                </td>
-                <td>
-                  {inq.eventDate} @ {inq.eventTime}
                 </td>
                 <td>{inq.guestCount}</td>
                 <td>
@@ -115,8 +122,64 @@ const AdminInquiriesPage = () => {
                 </td>
               </tr>
             ))}
+            {activeInquiries.length === 0 && (
+              <tr>
+                <td colSpan={5} className="text-muted">
+                  No active inquiries.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
+        </div>
+      </div>
+
+      <div className="card mt-3">
+        <div className="card-body d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h3 className="h6 mb-0">Event Archive</h3>
+          <span className="text-muted small">Completed events</span>
+        </div>
+        <div className="table-responsive">
+          <table className="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Event Date</th>
+                <th>Contact</th>
+                <th>Guests</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {archivedInquiries.map((inq) => (
+                <tr key={inq._id} className={selectedId === inq._id ? "selected" : ""}>
+                  <td>
+                    {inq.eventDate} @ {inq.eventTime}
+                  </td>
+                  <td>
+                    <strong>{inq.contactName}</strong>
+                    <div className="text-muted">{inq.contactEmail}</div>
+                  </td>
+                  <td>{inq.guestCount}</td>
+                  <td>
+                    <span className="badge text-bg-light">Completed</span>
+                  </td>
+                  <td>
+                    <button className="btn btn-outline-secondary btn-sm" onClick={() => setSelectedId(inq._id)}>
+                      View
+                    </button>
+                  </td>
+                </tr>
+              ))}
+              {archivedInquiries.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-muted">
+                    No archived events yet.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 

@@ -32,7 +32,6 @@ const steps = [
   "Event Basics",
   "Buyout",
   "Room Preference",
-  "Deposit",
   "Menu Style",
   "Menu Courses",
   "Seating",
@@ -113,14 +112,15 @@ const EventBuilderPage = () => {
     seatingConfig: { tablesFor2: 0, tablesFor4: 0, tablesFor6: 0, longTables: 0, selectedTableIds: [], combinedGroups: [] },
     roomLayoutId: "",
     roomFlexibility: "flexible",
-    depositAmount: null,
-    depositDeferred: true,
     menuStyleId: fallbackMenuTemplates[0]._id,
   });
   const [pricing, setPricing] = useState<Pricing>(initialPricing);
   const [submitting, setSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [successDeposit, setSuccessDeposit] = useState<{ amount: number; link: string } | null>(null);
+  const [successNoDeposit, setSuccessNoDeposit] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [missingFields, setMissingFields] = useState<string[]>([]);
   const [localDraft, setLocalDraft] = useState<LocalDraft | null>(null);
   const [localDraftAvailable, setLocalDraftAvailable] = useState(false);
   const [draftEmail, setDraftEmail] = useState("");
@@ -274,8 +274,6 @@ const EventBuilderPage = () => {
       ...prev,
       ...draft.form,
       roomFlexibility: draft.form.roomFlexibility || "flexible",
-      depositAmount: draft.form.depositAmount ?? null,
-      depositDeferred: draft.form.depositDeferred ?? true,
       menuStyleId: draft.form.menuStyleId || fallbackMenuTemplates[0]._id,
     }));
     setCurrentStep(normalizeStep(draft.currentStep));
@@ -369,12 +367,9 @@ const EventBuilderPage = () => {
       return Boolean(form.roomLayoutId);
     }
     if (currentStep === 4) {
-      return true;
-    }
-    if (currentStep === 5) {
       return form.menuSelection.courses.length > 0;
     }
-    if (currentStep === 6) {
+    if (currentStep === 5) {
       return form.menuSelection.courses.some((course) => course.itemIds.length > 0);
     }
     return true;
@@ -383,7 +378,34 @@ const EventBuilderPage = () => {
   const handleSubmit = async () => {
     setSubmitting(true);
     setErrorMessage("");
+    setMissingFields([]);
     setSuccessMessage("");
+    if (
+      !form.eventDetails.contactName ||
+      !form.eventDetails.contactEmail ||
+      !form.eventDetails.contactPhone ||
+      !form.eventDetails.occasionType ||
+      !form.eventDetails.eventDate ||
+      !form.eventDetails.eventTime ||
+      !form.eventDetails.guestCount ||
+      !form.roomLayoutId ||
+      form.menuSelection.courses.length === 0
+    ) {
+      const missing: string[] = [];
+      if (!form.eventDetails.contactName) missing.push("contactName");
+      if (!form.eventDetails.contactEmail) missing.push("contactEmail");
+      if (!form.eventDetails.contactPhone) missing.push("contactPhone");
+      if (!form.eventDetails.occasionType) missing.push("occasionType");
+      if (!form.eventDetails.eventDate) missing.push("eventDate");
+      if (!form.eventDetails.eventTime) missing.push("eventTime");
+      if (!form.eventDetails.guestCount) missing.push("guestCount");
+      if (!form.roomLayoutId) missing.push("roomLayoutId");
+      if (form.menuSelection.courses.length === 0) missing.push("menuSelection");
+      setMissingFields(missing);
+      setErrorMessage("Please complete the required fields before submitting.");
+      setSubmitting(false);
+      return;
+    }
     const payload: CreateInquiryPayload = {
       isBuyout: form.eventDetails.isBuyout,
       buyoutAmount: form.eventDetails.buyoutAmount,
@@ -401,9 +423,40 @@ const EventBuilderPage = () => {
       specialRequests: form.eventDetails.specialRequests,
     };
 
+    const depositInfo = (() => {
+      const count = form.eventDetails.guestCount;
+      if (count < 10) return null;
+      if (count <= 15) {
+        return {
+          amount: 200,
+          link: "https://buy.stripe.com/eVq9ASeGE7p18XV5N23oA01",
+        };
+      }
+      if (count <= 30) {
+        return {
+          amount: 500,
+          link: "https://buy.stripe.com/dRm6oGgOMaBd0rp6R63oA02",
+        };
+      }
+      return {
+        amount: 1000,
+        link: "https://buy.stripe.com/6oU00idCA5gT0rpcbq3oA03",
+      };
+    })();
+
     try {
       await createInquiry(payload);
-      setSuccessMessage("Thank you, your private dining inquiry has been submitted. We will contact you shortly.");
+      if (depositInfo) {
+        setSuccessMessage(
+          `Success! Your enquiry is in. A $${depositInfo.amount} deposit is required within 3 days to hold your booking.`
+        );
+        setSuccessDeposit(depositInfo);
+        setSuccessNoDeposit(false);
+      } else {
+        setSuccessMessage("Success! Your enquiry is in.");
+        setSuccessDeposit(null);
+        setSuccessNoDeposit(true);
+      }
       clearLocalDraft();
       setForm({
         eventDetails: initialEventDetails,
@@ -411,14 +464,13 @@ const EventBuilderPage = () => {
         seatingConfig: { tablesFor2: 0, tablesFor4: 0, tablesFor6: 0, longTables: 0, selectedTableIds: [], combinedGroups: [] },
         roomLayoutId: rooms[0]?._id || "",
         roomFlexibility: "flexible",
-        depositAmount: null,
-        depositDeferred: true,
         menuStyleId: fallbackMenuTemplates[0]._id,
       });
       setCurrentStep(0);
     } catch (err) {
       console.error(err);
-      setErrorMessage("Failed to submit inquiry.");
+      const message = err instanceof Error ? err.message : "Failed to submit inquiry.";
+      setErrorMessage(message);
     } finally {
       setSubmitting(false);
     }
@@ -541,209 +593,213 @@ const EventBuilderPage = () => {
         </div>
       </div>
 
-      {errorMessage && <div className="alert alert-warning">{errorMessage}</div>}
-      {successMessage && <div className="alert alert-success">{successMessage}</div>}
-
-      {currentStep === 0 && (
-        <EventDetailsForm
-          value={form.eventDetails}
-          onChange={(value) => setForm((prev) => ({ ...prev, eventDetails: value }))}
-          mode="contact"
-        />
-      )}
-
-      {currentStep === 1 && (
-        <EventDetailsForm
-          value={form.eventDetails}
-          onChange={(value) => setForm((prev) => ({ ...prev, eventDetails: value }))}
-          mode="basics"
-        />
-      )}
-
-      {currentStep === 2 && (
-        <EventDetailsForm
-          value={form.eventDetails}
-          onChange={(value) => setForm((prev) => ({ ...prev, eventDetails: value }))}
-          mode="buyout"
-        />
-      )}
-
-      {currentStep === 3 && (
-        <div className="card">
-          <div className="card-body">
-            <p className="text-muted">Choose your preferred room. We can adjust after review.</p>
-            <div className="row g-3">
-              <div className="col-12 col-lg-6">
-                <label className="form-label">Preferred Room</label>
-                <select
-                  className="form-select"
-                  value={form.roomLayoutId}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, roomLayoutId: e.target.value }))
-                  }
-                >
-                  {rooms.map((room) => (
-                    <option key={room._id} value={room._id}>
-                      {room.name} (Capacity {room.capacity})
-                    </option>
-                  ))}
-                </select>
-                <div className="form-text">Pick what looks closest to your event.</div>
+      {errorMessage && (
+        <div className="alert alert-warning">
+          <div>{errorMessage}</div>
+          {missingFields.length > 0 && (
+            <div className="mt-2">
+              Missing:
+              <div className="d-flex flex-wrap gap-2 mt-2">
+                {missingFields.includes("contactName") ||
+                missingFields.includes("contactEmail") ||
+                missingFields.includes("contactPhone") ? (
+                  <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setCurrentStep(0)}>
+                    Contact
+                  </button>
+                ) : null}
+                {missingFields.includes("occasionType") ||
+                missingFields.includes("eventDate") ||
+                missingFields.includes("eventTime") ||
+                missingFields.includes("guestCount") ? (
+                  <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setCurrentStep(1)}>
+                    Event Basics
+                  </button>
+                ) : null}
+                {missingFields.includes("roomLayoutId") ? (
+                  <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setCurrentStep(3)}>
+                    Room Preference
+                  </button>
+                ) : null}
+                {missingFields.includes("menuSelection") ? (
+                  <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => setCurrentStep(5)}>
+                    Menu Courses
+                  </button>
+                ) : null}
               </div>
-              <div className="col-12 col-lg-6 d-flex align-items-end">
-                <div className="form-check form-switch">
-                  <input
-                    className="form-check-input"
-                    type="checkbox"
-                    checked={form.roomFlexibility === "flexible"}
+            </div>
+          )}
+        </div>
+      )}
+      {successMessage && (
+        <div className="alert alert-success">
+          <div>{successMessage}</div>
+          {successDeposit && (
+            <div className="mt-2">
+              Please pay your deposit here:{" "}
+              <a href={successDeposit.link} target="_blank" rel="noreferrer">
+                ${successDeposit.amount} deposit link
+              </a>
+            </div>
+          )}
+          {successNoDeposit && (
+            <div className="mt-2">No deposit is required for events under 10 guests.</div>
+          )}
+        </div>
+      )}
+
+      <div className="step-panel" key={currentStep}>
+        {currentStep === 0 && (
+          <EventDetailsForm
+            value={form.eventDetails}
+            onChange={(value) => setForm((prev) => ({ ...prev, eventDetails: value }))}
+            mode="contact"
+          />
+        )}
+
+        {currentStep === 1 && (
+          <EventDetailsForm
+            value={form.eventDetails}
+            onChange={(value) => setForm((prev) => ({ ...prev, eventDetails: value }))}
+            mode="basics"
+          />
+        )}
+
+        {currentStep === 2 && (
+          <EventDetailsForm
+            value={form.eventDetails}
+            onChange={(value) => setForm((prev) => ({ ...prev, eventDetails: value }))}
+            mode="buyout"
+          />
+        )}
+
+        {currentStep === 3 && (
+          <div className="card">
+            <div className="card-body">
+              <p className="text-muted">Choose your preferred room. We can adjust after review.</p>
+              <div className="row g-3">
+                <div className="col-12 col-lg-6">
+                  <label className="form-label">Preferred Room</label>
+                  <select
+                    className="form-select"
+                    value={form.roomLayoutId}
                     onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        roomFlexibility: e.target.checked ? "flexible" : "specific",
-                      }))
+                      setForm((prev) => ({ ...prev, roomLayoutId: e.target.value }))
                     }
-                    id="room-flex"
-                  />
-                  <label className="form-check-label" htmlFor="room-flex">
-                    I am flexible if this room is unavailable
-                  </label>
+                  >
+                    {rooms.map((room) => (
+                      <option key={room._id} value={room._id}>
+                        {room.name} (Capacity {room.capacity})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="form-text">Pick what looks closest to your event.</div>
+                </div>
+                <div className="col-12 col-lg-6 d-flex align-items-end">
+                  <div className="form-check form-switch">
+                    <input
+                      className="form-check-input"
+                      type="checkbox"
+                      checked={form.roomFlexibility === "flexible"}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          roomFlexibility: e.target.checked ? "flexible" : "specific",
+                        }))
+                      }
+                      id="room-flex"
+                    />
+                    <label className="form-check-label" htmlFor="room-flex">
+                      I am flexible if this room is unavailable
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {currentStep === 4 && (
-        <div className="card">
-          <div className="card-body">
-            <h3 className="h5 mb-1">Reserve with a Deposit</h3>
-            <p className="text-muted">Placeholder step for future Stripe payments.</p>
-            <div className="deposit-grid">
-              {[250, 500, 1000].map((amount) => (
-                <button
-                  key={amount}
-                  className={`deposit-card ${form.depositAmount === amount && !form.depositDeferred ? "active" : ""}`}
-                  type="button"
-                  onClick={() =>
-                    setForm((prev) => ({
-                      ...prev,
-                      depositAmount: amount,
-                      depositDeferred: false,
-                    }))
-                  }
-                >
-                  <div className="deposit-value">${amount}</div>
-                  <div className="deposit-label">Suggested deposit</div>
-                </button>
-              ))}
-              <button
-                className={`deposit-card ${form.depositDeferred ? "active" : ""}`}
-                type="button"
-                onClick={() =>
-                  setForm((prev) => ({
-                    ...prev,
-                    depositAmount: null,
-                    depositDeferred: true,
-                  }))
-                }
-              >
-                <div className="deposit-value">Decide later</div>
-                <div className="deposit-label">No payment today</div>
-              </button>
-            </div>
-            {!form.depositDeferred && (
-              <div className="form-text mt-2">
-                This is a placeholder. You will not be charged today.
+        {currentStep === 4 && (
+          <div className="card">
+            <div className="card-body">
+              <h3 className="h5 mb-1">Choose a Menu Style</h3>
+              <p className="text-muted">Pick a starting point. You can customize courses next.</p>
+              <div className="menu-style-grid">
+                {(templates.length > 0 ? templates : fallbackMenuTemplates).map((template) => (
+                  <button
+                    key={template._id}
+                    className={`menu-style-card ${form.menuStyleId === template._id ? "active" : ""}`}
+                    type="button"
+                    onClick={() => {
+                      const courses = buildTemplateCourses(template, items);
+                      setForm((prev) => ({
+                        ...prev,
+                        menuStyleId: template._id,
+                        menuSelection: { courses },
+                      }));
+                    }}
+                  >
+                    <div className="menu-style-title">{template.name}</div>
+                    <div className="menu-style-desc">{template.description}</div>
+                    <div className="menu-style-courses">
+                      {(template.courses || []).map((course) => (
+                        <span key={course.name} className="menu-style-chip">
+                          {course.name}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {currentStep === 5 && (
-        <div className="card">
-          <div className="card-body">
-            <h3 className="h5 mb-1">Choose a Menu Style</h3>
-            <p className="text-muted">Pick a starting point. You can customize courses next.</p>
-            <div className="menu-style-grid">
-              {(templates.length > 0 ? templates : fallbackMenuTemplates).map((template) => (
-                <button
-                  key={template._id}
-                  className={`menu-style-card ${form.menuStyleId === template._id ? "active" : ""}`}
-                  type="button"
-                  onClick={() => {
-                    const courses = buildTemplateCourses(template, items);
-                    setForm((prev) => ({
-                      ...prev,
-                      menuStyleId: template._id,
-                      menuSelection: { courses },
-                    }));
-                  }}
-                >
-                  <div className="menu-style-title">{template.name}</div>
-                  <div className="menu-style-desc">{template.description}</div>
-                  <div className="menu-style-courses">
-                    {(template.courses || []).map((course) => (
-                      <span key={course.name} className="menu-style-chip">
-                        {course.name}
-                      </span>
-                    ))}
-                  </div>
-                </button>
-              ))}
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {currentStep === 6 && (
-        <>
-          <div className="alert alert-light border">
-            <strong>Per-person estimate:</strong> ${pricing.estimatedPricePerPerson.toFixed(2)} based on current selections.
-          </div>
-          <MenuBuilder
-            categories={categories}
-            items={items}
-            selection={form.menuSelection}
-            onChange={(selection) => setForm((prev) => ({ ...prev, menuSelection: selection }))}
-            showTemplateControls={false}
-          />
-        </>
-      )}
+        {currentStep === 5 && (
+          <>
+            <div className="alert alert-light border">
+              <strong>Per-person estimate:</strong> ${pricing.estimatedPricePerPerson.toFixed(2)} based on current selections.
+            </div>
+            <MenuBuilder
+              categories={categories}
+              items={items}
+              selection={form.menuSelection}
+              onChange={(selection) => setForm((prev) => ({ ...prev, menuSelection: selection }))}
+              showTemplateControls={false}
+            />
+          </>
+        )}
 
-      {currentStep === 7 && (
-        <>
-          <div className="alert alert-light border">
-            <strong>Room:</strong> {selectedRoom?.name || "Select a room"} ·{" "}
-            {form.roomFlexibility === "flexible" ? "Flexible if needed" : "Specific room required"}
-          </div>
-          <SeatingConfigurator
-            rooms={rooms}
-            roomLayoutId={form.roomLayoutId}
+        {currentStep === 6 && (
+          <>
+            <div className="alert alert-light border">
+              <strong>Room:</strong> {selectedRoom?.name || "Select a room"} ·{" "}
+              {form.roomFlexibility === "flexible" ? "Flexible if needed" : "Specific room required"}
+            </div>
+            <SeatingConfigurator
+              rooms={rooms}
+              roomLayoutId={form.roomLayoutId}
+              seatingConfig={form.seatingConfig}
+              isBuyout={form.eventDetails.isBuyout}
+              guestCount={form.eventDetails.guestCount}
+              onChange={(roomLayoutId, seatingConfig) => setForm((prev) => ({ ...prev, roomLayoutId, seatingConfig }))}
+              showRoomSelect={false}
+            />
+          </>
+        )}
+
+        {currentStep === 7 && (
+          <InquiryReview
+            eventDetails={form.eventDetails}
             seatingConfig={form.seatingConfig}
-            isBuyout={form.eventDetails.isBuyout}
-            guestCount={form.eventDetails.guestCount}
-            onChange={(roomLayoutId, seatingConfig) => setForm((prev) => ({ ...prev, roomLayoutId, seatingConfig }))}
-            showRoomSelect={false}
+            room={selectedRoom}
+            courses={form.menuSelection.courses}
+            items={items}
+            pricing={pricing}
+            roomFlexibility={form.roomFlexibility}
+            onEditStep={(step) => setCurrentStep(step)}
           />
-        </>
-      )}
-
-      {currentStep === 8 && (
-        <InquiryReview
-          eventDetails={form.eventDetails}
-          seatingConfig={form.seatingConfig}
-          room={selectedRoom}
-          courses={form.menuSelection.courses}
-          items={items}
-          pricing={pricing}
-          roomFlexibility={form.roomFlexibility}
-          depositAmount={form.depositAmount}
-          depositDeferred={form.depositDeferred}
-          onEditStep={(step) => setCurrentStep(step)}
-        />
-      )}
+        )}
+      </div>
 
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
         {currentStep > 0 ? (

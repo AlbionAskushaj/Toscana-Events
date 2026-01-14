@@ -76,6 +76,27 @@ export const buildInquiryStatusEmail = (params: {
   status: "new" | "reviewing" | "approved" | "declined";
 }) => {
   const { inquiry, status } = params;
+  const depositInfo = (() => {
+    const count = inquiry.guestCount || 0;
+    if (count < 10) return null;
+    if (count <= 15) {
+      return {
+        amount: 200,
+        link: "https://buy.stripe.com/eVq9ASeGE7p18XV5N23oA01",
+      };
+    }
+    if (count <= 30) {
+      return {
+        amount: 500,
+        link: "https://buy.stripe.com/dRm6oGgOMaBd0rp6R63oA02",
+      };
+    }
+    return {
+      amount: 1000,
+      link: "https://buy.stripe.com/6oU00idCA5gT0rpcbq3oA03",
+    };
+  })();
+
   const subjectMap: Record<string, string> = {
     new: "Your inquiry is received",
     reviewing: "Your inquiry is being reviewed",
@@ -84,12 +105,18 @@ export const buildInquiryStatusEmail = (params: {
   };
   const messageMap: Record<string, string> = {
     new: "We’ve received your inquiry and will follow up shortly.",
-    reviewing: "Our team is reviewing your request now. We’ll reach out soon.",
+    reviewing: "Our team is reviewing your request now. Please complete the deposit within 3 days to hold your booking.",
     approved: "Great news! Your private dining request is confirmed.",
     declined: "We’re sorry, but we can’t accommodate this request as submitted.",
   };
 
   const subject = subjectMap[status] || "Update on your inquiry";
+  const depositLine =
+    status === "reviewing"
+      ? depositInfo
+        ? `Deposit required: $${depositInfo.amount}. Pay here: ${depositInfo.link}`
+        : "No deposit is required for events under 10 guests."
+      : "";
   const html = `
   <div style="font-family: 'Cormorant Garamond', Georgia, serif; background:#0b0907; color:#ffffff; padding:32px;">
     <div style="max-width:640px; margin:0 auto; border:1px solid #2e231a; border-radius:16px; background:#14100c; padding:28px;">
@@ -100,6 +127,7 @@ export const buildInquiryStatusEmail = (params: {
       <p style="color:#e6d8c4; margin:0 0 20px;">
         ${messageMap[status] || "We’ll be in touch shortly."}
       </p>
+      ${status === "reviewing" ? `<p style="color:#e6d8c4; margin:0 0 20px;">${depositLine}</p>` : ""}
       <div style="border-top:1px solid #2e231a; padding-top:16px; margin-top:12px;">
         <div style="text-transform:uppercase; letter-spacing:0.2em; font-size:11px; color:#d7b36a;">Event</div>
         <div style="font-size:16px; margin-top:6px;">${inquiry.eventDate} at ${inquiry.eventTime}</div>
@@ -109,7 +137,9 @@ export const buildInquiryStatusEmail = (params: {
   </div>
   `;
 
-  const text = `Toscana Italian Grill\n\n${subject}\n\n${messageMap[status] || "We’ll be in touch shortly."}\nEvent: ${inquiry.eventDate} at ${inquiry.eventTime}\nGuests: ${inquiry.guestCount}`;
+  const text = `Toscana Italian Grill\n\n${subject}\n\n${messageMap[status] || "We’ll be in touch shortly."}${
+    depositLine ? `\n${depositLine}` : ""
+  }\nEvent: ${inquiry.eventDate} at ${inquiry.eventTime}\nGuests: ${inquiry.guestCount}`;
 
   return { subject, html, text };
 };

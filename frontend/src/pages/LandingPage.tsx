@@ -7,10 +7,10 @@ const LandingPage = () => {
         <div className="container py-5">
           <div className="row align-items-center g-5">
             <div className="col-12 col-lg-7">
-              <p className="eyebrow brand-italiana mb-3">
+              <p className="eyebrow brand-italiana mb-3 hero-brand">
                 Toscana Italian Grill
               </p>
-              <p className="hero-subtitle">Private Dining, Toscana style</p>
+              <p className="hero-subtitle hero-reveal">Private Dining, Toscana style</p>
               <p className="text-muted mb-2">Most guests finish in 3–5 minutes.</p>
               <div className="d-flex gap-3 flex-wrap mt-4">
                 <Link className="btn btn-gold btn-lg" to="/build">

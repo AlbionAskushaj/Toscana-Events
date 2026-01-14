@@ -6,7 +6,7 @@ import { buildInquiryStatusEmail, buildInquirySubmittedEmail } from "../services
 
 const SERVICE_CHARGE_RATE = 0.18;
 const TAX_RATE = 0.05;
-const VALID_STATUSES = new Set(["new", "reviewing", "approved", "declined"]);
+const VALID_STATUSES = new Set(["new", "reviewing", "approved", "declined", "completed"]);
 
 const toMenuItem = (row: MenuItemRow) => ({
   _id: row.id,
@@ -127,6 +127,21 @@ export const createInquiry = async (req: Request, res: Response) => {
     dietaryNotes,
     specialRequests,
   } = req.body;
+
+  const missingFields: string[] = [];
+  if (!contactName) missingFields.push("contactName");
+  if (!contactEmail) missingFields.push("contactEmail");
+  if (!contactPhone) missingFields.push("contactPhone");
+  if (!occasionType) missingFields.push("occasionType");
+  if (!eventDate) missingFields.push("eventDate");
+  if (!eventTime) missingFields.push("eventTime");
+  if (!guestCount) missingFields.push("guestCount");
+  if (!roomLayoutId) missingFields.push("roomLayoutId");
+  if (!menuSelection?.courses?.length) missingFields.push("menuSelection");
+
+  if (missingFields.length > 0) {
+    return res.status(400).json({ message: "Missing required fields", missingFields });
+  }
 
   if (buyoutAmount !== undefined && Number(buyoutAmount) < 0) {
     return res.status(400).json({ message: "Buyout amount must be 0 or greater" });

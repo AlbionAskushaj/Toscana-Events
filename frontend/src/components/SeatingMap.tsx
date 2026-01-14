@@ -23,7 +23,8 @@ const SeatingMap: React.FC<Props> = ({ room, seatingConfig, isBuyout, onChange }
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        setSize(Math.max(entry.contentRect.width, 320));
+        const next = Math.min(entry.contentRect.width, 420);
+        setSize(Math.max(next, 300));
       }
     });
     if (containerRef.current) observer.observe(containerRef.current);
@@ -52,7 +53,9 @@ const SeatingMap: React.FC<Props> = ({ room, seatingConfig, isBuyout, onChange }
         <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
           <div>
             <h3 className="h5 mb-1">Seating Map</h3>
-            <p className="text-muted mb-0">Click tables to select them. Hover for details.</p>
+            <p className="text-muted mb-0">
+              Please select your ideal seating arrangement in the room you have chosen for your guest count.
+            </p>
           </div>
           {isBuyout && <span className="badge text-bg-warning">Buyout editor coming next</span>}
         </div>
