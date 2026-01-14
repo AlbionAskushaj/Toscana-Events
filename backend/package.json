@@ -1,12 +1,12 @@
 {
   "name": "toscana-backend",
   "version": "1.0.0",
-  "main": "dist/src/server.js",
+  "main": "dist/backend/src/server.js",
   "scripts": {
     "dev": "tsx src/server.ts",
     "dev:watch": "tsx watch src/server.ts",
     "build": "tsc --project tsconfig.json",
-    "start": "node dist/src/server.js"
+    "start": "node dist/backend/src/server.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.42.3",
