@@ -25,17 +25,23 @@ required.forEach((key) => {
   }
 });
 
+const clientOriginRaw = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+const clientOrigin = clientOriginRaw
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 export const env = {
   supabaseUrl: process.env.SUPABASE_URL || "",
   supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
   supabaseAnonKey: process.env.SUPABASE_ANON_KEY || "",
   port: Number(process.env.PORT) || 5001,
-  clientOrigin: process.env.CLIENT_ORIGIN || "http://localhost:5173",
+  clientOrigin,
   postmarkToken: process.env.POSTMARK_SERVER_TOKEN || "",
   emailFrom: process.env.EMAIL_FROM || "",
 };
 
-console.log(`[env] PORT=${env.port} CLIENT_ORIGIN=${env.clientOrigin}`);
+console.log(`[env] PORT=${env.port} CLIENT_ORIGIN=${clientOriginRaw}`);
 if (!env.postmarkToken) {
   console.warn("[env] Missing POSTMARK_SERVER_TOKEN; email sending disabled");
 }

@@ -16,7 +16,19 @@ import authRoutes from "./routes/authRoutes";
 console.log("[startup] Initializing Express app");
 const app = express();
 
-app.use(cors({ origin: env.clientOrigin, credentials: true }));
+const allowedOrigins = env.clientOrigin;
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes("*") || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error(`Not allowed by CORS: ${origin}`));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 app.use(morgan("dev"));
 

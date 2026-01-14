@@ -248,13 +248,13 @@ const AdminTemplatesPage = () => {
   return (
     <div className="page page-admin-templates">
       <div className="container py-4 admin-templates">
-        <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+        <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 page-header">
           <div>
             <p className="eyebrow mb-1">Admin</p>
             <h2 className="mb-0">Menu Templates</h2>
             <p className="text-muted mb-0">Design the course flow guests see on the menu step.</p>
           </div>
-          <div className="d-flex gap-2 flex-wrap">
+          <div className="d-flex gap-2 flex-wrap page-header-actions">
             <Link className="btn btn-outline-secondary" to="/admin/inquiries">
               Inquiries
             </Link>

@@ -17,7 +17,7 @@ const Stepper: React.FC<StepperProps> = ({ steps, currentStep, onStepClick }) =>
   }, [currentStep]);
 
   return (
-    <div className="d-flex flex-wrap gap-2">
+    <div className="d-flex flex-wrap gap-2 stepper">
       {steps.map((label, idx) => {
         const isActive = idx === currentStep;
         const isComplete = idx < currentStep;

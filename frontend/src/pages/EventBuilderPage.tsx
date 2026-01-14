@@ -490,13 +490,13 @@ const EventBuilderPage = () => {
   return (
     <div className="page page-builder">
       <div className="container py-4">
-      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3">
+      <div className="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-3 page-header">
         <div>
           <p className="eyebrow mb-1">Private Dining Builder</p>
           <h2 className="mb-0">Build your event</h2>
           <p className="text-muted mb-0">One small step at a time. You can pause and come back.</p>
         </div>
-        <div className="flex-grow-1">
+        <div className="flex-grow-1 stepper-wrap">
           <Stepper
             steps={steps}
             currentStep={currentStep}

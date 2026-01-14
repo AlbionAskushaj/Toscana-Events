@@ -640,6 +640,18 @@ select:-webkit-autofill {
   border: 1px solid rgba(212, 163, 80, 0.2);
 }
 
+.page-header {
+  gap: 1.5rem;
+}
+
+.stepper {
+  align-items: center;
+}
+
+.stepper-wrap {
+  min-width: 220px;
+}
+
 .panel-header h2 { margin-bottom: 1.2rem; }
 
 .panel-kicker {
@@ -1000,4 +1012,123 @@ select:-webkit-autofill {
 
 .form-text {
   color: var(--muted);
+}
+
+@media (max-width: 768px) {
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .page-header-actions {
+    width: 100%;
+  }
+
+  .page-header-actions .btn {
+    width: 100%;
+  }
+
+  .stepper {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+  }
+
+  .stepper .badge {
+    flex: 0 0 auto;
+    font-size: 11px;
+  }
+
+  .stepper-wrap {
+    width: 100%;
+  }
+
+  .landing-hero {
+    padding: 1.2rem 0 2.5rem;
+  }
+
+  .hero-panel-inner {
+    padding: 1.4rem;
+  }
+
+  .card-body {
+    padding: 1.1rem;
+  }
+
+  .menu-course-list .menu-course-item {
+    padding: 0.85rem 0.9rem;
+  }
+
+  .template-card,
+  .course-card {
+    padding: 1rem;
+  }
+
+  .draft-toggle {
+    width: 100%;
+  }
+
+  .navbar-brand {
+    font-size: 14px;
+    line-height: 1.2;
+  }
+
+  .nav-gilded .nav-link {
+    font-size: 11px;
+    letter-spacing: 0.02em;
+  }
+
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .hero-subtitle {
+    font-size: 1rem;
+  }
+
+  .hero-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+
+  .draft-toggle-wrap {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .draft-hint {
+    position: static;
+    width: auto;
+    margin-top: 8px;
+  }
+
+  .menu-style-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .menu-item-card {
+    padding: 0.85rem 0.9rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .hero-note {
+    width: 100%;
+  }
+
+  .hero-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .btn-primary,
+  .btn-gold {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
 }
