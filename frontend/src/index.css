@@ -1287,6 +1287,7 @@ select:-webkit-autofill {
   .collage-tile {
     margin: 0;
     transform: none;
+    aspect-ratio: 1 / 1;
   }
 
   .collage-tile:nth-child(odd),
@@ -1410,6 +1411,7 @@ select:-webkit-autofill {
     border-radius: 14px;
     margin: 0;
     box-shadow: 0 10px 20px rgba(33, 62, 26, 0.14);
+    aspect-ratio: 16 / 11;
   }
 
   .hero-logo {
