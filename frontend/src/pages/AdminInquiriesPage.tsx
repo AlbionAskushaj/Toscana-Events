@@ -45,6 +45,7 @@ const AdminInquiriesPage = () => {
   const selected = inquiries.find((i) => i._id === selectedId);
   const menuItemById = new Map(menuItems.map((item) => [item._id, item.name]));
   const roomById = new Map(rooms.map((room) => [room._id, room.name]));
+  const roomMetaById = new Map(rooms.map((room) => [room._id, room]));
   const byEventDate = (list: EventInquiry[]) =>
     [...list].sort((a, b) => {
       const left = `${a.eventDate || ""} ${a.eventTime || ""}`.trim();
@@ -187,42 +188,102 @@ const AdminInquiriesPage = () => {
         <div className="card mt-3">
           <div className="card-body">
             <h3 className="h5">Inquiry Details</h3>
-          <p>
-            <strong>{selected.contactName}</strong> · {selected.contactEmail} · {selected.contactPhone}
-          </p>
-          <p>
-            {selected.eventDate} at {selected.eventTime} — {selected.guestCount} guests
-          </p>
-          <p>Occasion: {selected.occasionType}</p>
-          {selected.isBuyout && (
-            <p>
-              <strong>Buyout Details:</strong>{" "}
-              {selected.specialRequests
-                ?.split("\n")
-                .find((line) => line.startsWith("Buyout details:")) || "Provided in special requests."}
-            </p>
-          )}
-          <h4>Menu</h4>
-          {selected.menuSelection.courses.map((course) => (
-            <div key={course.courseType} className="text-muted">
-              <strong>{course.courseType.toUpperCase()}</strong>:{" "}
-              {course.itemIds
-                .map((id) => menuItemById.get(id) || id)
-                .join(", ")}
+            <div className="row g-3">
+              <div className="col-12 col-lg-6">
+                <h4 className="h6 text-uppercase text-muted">Contact</h4>
+                <div>
+                  <strong>{selected.contactName}</strong>
+                </div>
+                <div>{selected.contactEmail}</div>
+                <div>{selected.contactPhone}</div>
+              </div>
+              <div className="col-12 col-lg-6">
+                <h4 className="h6 text-uppercase text-muted">Event</h4>
+                <div>{selected.eventDate} at {selected.eventTime}</div>
+                <div>{selected.guestCount} guests</div>
+                <div>Occasion: {selected.occasionType}</div>
+                <div>Status: {selected.status}</div>
+                <div className="text-muted small">Created: {new Date(selected.createdAt).toLocaleString()}</div>
+                <div className="text-muted small">Updated: {new Date(selected.updatedAt).toLocaleString()}</div>
+              </div>
             </div>
-          ))}
-          <h4>Seating</h4>
-          <ul>
-            <li>Room: {roomById.get(selected.roomLayoutId) || selected.roomLayoutId}</li>
-            <li>Tables for 2: {selected.seatingConfig.tablesFor2}</li>
-            <li>Tables for 4: {selected.seatingConfig.tablesFor4}</li>
-            <li>Tables for 6: {selected.seatingConfig.tablesFor6}</li>
-            <li>Long tables: {selected.seatingConfig.longTables}</li>
-          </ul>
-          <h4>Pricing</h4>
-          <p>
-            Per person ${selected.estimatedPricePerPerson.toFixed(2)} | Total ${selected.estimatedTotal.toFixed(2)}
-          </p>
+
+            <div className="mt-3">
+              <h4 className="h6 text-uppercase text-muted">Buyout</h4>
+              <div>{selected.isBuyout ? "Yes" : "No"}</div>
+              {selected.isBuyout && selected.buyoutAmount && (
+                <div>Buyout amount: ${Number(selected.buyoutAmount).toLocaleString()}</div>
+              )}
+              {selected.isBuyout && (
+                <div>
+                  Buyout details:{" "}
+                  {selected.specialRequests
+                    ?.split("\n")
+                    .find((line) => line.startsWith("Buyout details:"))
+                    ?.replace("Buyout details:", "")
+                    .trim() || "Provided in special requests."}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-3">
+              <h4 className="h6 text-uppercase text-muted">Menu</h4>
+              {selected.menuSelection.courses.map((course) => (
+                <div key={course.courseType}>
+                  <strong>{course.courseType}</strong>:{" "}
+                  {course.itemIds.length > 0
+                    ? course.itemIds.map((id) => menuItemById.get(id) || id).join(", ")
+                    : "None"}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-3">
+              <h4 className="h6 text-uppercase text-muted">Seating</h4>
+              <div>Room: {roomById.get(selected.roomLayoutId) || selected.roomLayoutId}</div>
+              <div>Tables for 2: {selected.seatingConfig.tablesFor2}</div>
+              <div>Tables for 4: {selected.seatingConfig.tablesFor4}</div>
+              <div>Tables for 6: {selected.seatingConfig.tablesFor6}</div>
+              <div>Long tables: {selected.seatingConfig.longTables}</div>
+              {selected.seatingConfig.selectedTableIds && selected.seatingConfig.selectedTableIds.length > 0 && (
+                <div>
+                  Selected tables:{" "}
+                  {selected.seatingConfig.selectedTableIds
+                    .map((id) => {
+                      const room = roomMetaById.get(selected.roomLayoutId);
+                      const match = room?.tables?.find((t) => t.id === id);
+                      return match?.label || id;
+                    })
+                    .join(", ")}
+                </div>
+              )}
+              {selected.seatingConfig.combinedGroups && selected.seatingConfig.combinedGroups.length > 0 && (
+                <div>
+                  Combined groups:{" "}
+                  {selected.seatingConfig.combinedGroups
+                    .map((group) => `${group.label} (${group.seats} seats)`)
+                    .join(", ")}
+                </div>
+              )}
+              {selected.seatingConfig.tables && selected.seatingConfig.tables.length > 0 && (
+                <div>Custom tables: {selected.seatingConfig.tables.length}</div>
+              )}
+            </div>
+
+            <div className="mt-3">
+              <h4 className="h6 text-uppercase text-muted">Notes</h4>
+              <div>Dietary notes: {selected.dietaryNotes || "None"}</div>
+              <div>Special requests: {selected.specialRequests || "None"}</div>
+            </div>
+
+            <div className="mt-3">
+              <h4 className="h6 text-uppercase text-muted">Pricing</h4>
+              <div>Per person: ${selected.estimatedPricePerPerson.toFixed(2)}</div>
+              <div>Subtotal: ${selected.estimatedSubtotal.toFixed(2)}</div>
+              <div>Service charge: ${selected.estimatedServiceCharge.toFixed(2)}</div>
+              <div>Tax: ${selected.estimatedTax.toFixed(2)}</div>
+              <div><strong>Total: ${selected.estimatedTotal.toFixed(2)}</strong></div>
+            </div>
           </div>
         </div>
       )}

@@ -100,8 +100,11 @@ const EventDetailsForm: React.FC<Props> = ({ value, onChange, mode }) => {
                   className="form-control"
                   type="number"
                   min={1}
-                  value={value.guestCount}
-                  onChange={(e) => handleChange("guestCount", Number(e.target.value))}
+                  value={value.guestCount || ""}
+                  onChange={(e) => {
+                    const next = e.target.value;
+                    handleChange("guestCount", next === "" ? 0 : Number(next));
+                  }}
                 />
                 <div className="form-text">We’ll size the menu and seating for you.</div>
               </div>
