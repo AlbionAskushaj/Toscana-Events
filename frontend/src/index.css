@@ -1262,6 +1262,18 @@ select:-webkit-autofill {
     padding: 1.2rem 0 2.5rem;
   }
 
+  .landing-collage {
+    gap: 1.2rem;
+  }
+
+  .hero-banner {
+    max-width: 100%;
+  }
+
+  .hero-banner-rule {
+    width: 120px;
+  }
+
   .hero-logo {
     width: 120px;
   }
@@ -1273,12 +1285,23 @@ select:-webkit-autofill {
   }
 
   .collage-tile {
-    margin: -4px;
+    margin: 0;
+    transform: none;
+  }
+
+  .collage-tile:nth-child(odd),
+  .collage-tile:nth-child(even) {
+    transform: none;
   }
 
   .hero-cta {
     width: 100%;
     justify-content: center;
+  }
+
+  .hero-note {
+    width: 100%;
+    text-align: center;
   }
 
   .hero-panel-inner {
@@ -1373,6 +1396,11 @@ select:-webkit-autofill {
     font-size: 1.7rem;
   }
 
+  .hero-banner-kicker {
+    font-size: 11px;
+    letter-spacing: 0.22em;
+  }
+
   .hero-collage {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -1381,6 +1409,7 @@ select:-webkit-autofill {
   .collage-tile {
     border-radius: 14px;
     margin: 0;
+    box-shadow: 0 10px 20px rgba(33, 62, 26, 0.14);
   }
 
   .hero-logo {
