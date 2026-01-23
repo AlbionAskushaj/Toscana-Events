@@ -26,12 +26,15 @@ const ensureUniqueCourseName = (name: string, courses: MenuSelectionCourse[], ig
 const normalizeCategoryName = (value: string) =>
   value.toLowerCase().replace(/[^a-z0-9]+/g, "");
 
-const fallbackCategoryHints = (courseType: string) => {
+const fallbackCategoryHints = (courseType: string, index: number) => {
   const normalized = courseType.toLowerCase();
-  if (normalized.includes("course 1") || normalized.includes("starter") || normalized.includes("appetizer")) {
-    return ["Appetizers", "Salads", "Soups"];
+  if (normalized.includes("dessert") || index === 2) return ["Desserts"];
+  if (index === 0 || normalized.includes("course 1") || normalized.includes("starter") || normalized.includes("appetizer")) {
+    return ["Appetizers", "Salads"];
   }
-  if (normalized.includes("dessert")) return ["Desserts"];
+  if (index === 1 || normalized.includes("pasta")) {
+    return ["Pasta"];
+  }
   return [];
 };
 
@@ -61,7 +64,7 @@ const MenuBuilder: React.FC<Props> = ({
       activeCourse?.defaultCategoryNames?.length
         ? activeCourse.defaultCategoryNames
         : activeCourse
-        ? fallbackCategoryHints(activeCourse.courseType)
+        ? fallbackCategoryHints(activeCourse.courseType, activeIndex)
         : [];
     if (preferredNames.length === 0) return categoriesWithItems;
     const preferred = new Set(preferredNames.map(normalizeCategoryName));
@@ -147,7 +150,7 @@ const MenuBuilder: React.FC<Props> = ({
       activeCourse?.defaultCategoryNames?.length
         ? activeCourse.defaultCategoryNames
         : activeCourse
-        ? fallbackCategoryHints(activeCourse.courseType)
+        ? fallbackCategoryHints(activeCourse.courseType, activeIndex)
         : [];
     if (preferredNames.length === 0) {
       setOpenCategories((prev) => (prev.size > 0 ? prev : new Set([categories[0]._id])));

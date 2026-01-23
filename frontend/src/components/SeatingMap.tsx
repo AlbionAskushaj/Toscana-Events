@@ -23,8 +23,9 @@ const SeatingMap: React.FC<Props> = ({ room, seatingConfig, isBuyout, onChange }
   useEffect(() => {
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        const next = Math.min(entry.contentRect.width, 420);
-        setSize(Math.max(next, 300));
+        const width = entry.contentRect.width;
+        const max = width < 680 ? width : Math.min(width, 720);
+        setSize(Math.max(280, max));
       }
     });
     if (containerRef.current) observer.observe(containerRef.current);
