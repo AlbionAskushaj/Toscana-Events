@@ -83,7 +83,7 @@ const MenuBuilder: React.FC<Props> = ({
     const courseType = ensureUniqueCourseName(baseName, selection.courses);
     const next = [
       ...selection.courses,
-      { courseType, itemIds: [], selectionMode: "choice", maxChoices: 1 },
+      { courseType, itemIds: [], selectionMode: "choice" as const, maxChoices: 1 },
     ];
     updateCourses(next);
     setActiveIndex(next.length - 1);
@@ -186,7 +186,7 @@ const MenuBuilder: React.FC<Props> = ({
         existing.itemIds = maxChoices ? next.slice(0, maxChoices) : next;
       }
     } else {
-      courses.push({ courseType, itemIds: [itemId], selectionMode: "choice", maxChoices: 1 });
+      courses.push({ courseType, itemIds: [itemId], selectionMode: "choice" as const, maxChoices: 1 });
     }
     onChange({ courses });
   };
