@@ -28,46 +28,44 @@ const toMenuItem = (row: MenuItemRow) => ({
 
 const normalizeTemplateCourses = (input: unknown): MenuTemplateCourseRow[] => {
   if (!Array.isArray(input)) return [];
-  return input
-    .map((course) => {
-      if (typeof course === "string") {
-        return { name: course.trim() };
-      }
-      if (course && typeof course === "object" && "name" in course) {
-        return {
-          name: String((course as any).name || "").trim(),
-          suggested_item_names: Array.isArray((course as any).suggestedItemNames)
-            ? (course as any).suggestedItemNames.map((name: any) => String(name))
-            : Array.isArray((course as any).suggested_item_names)
-            ? (course as any).suggested_item_names.map((name: any) => String(name))
+  const mapped: Array<MenuTemplateCourseRow | null> = input.map((course) => {
+    if (typeof course === "string") {
+      const name = course.trim();
+      return name ? { name } : null;
+    }
+    if (course && typeof course === "object" && "name" in course) {
+      const name = String((course as any).name || "").trim();
+      if (!name) return null;
+      return {
+        name,
+        suggested_item_names: Array.isArray((course as any).suggestedItemNames)
+          ? (course as any).suggestedItemNames.map((item: any) => String(item))
+          : Array.isArray((course as any).suggested_item_names)
+          ? (course as any).suggested_item_names.map((item: any) => String(item))
+          : undefined,
+        selection_mode: (course as any).selectionMode || (course as any).selection_mode || undefined,
+        max_choices:
+          typeof (course as any).maxChoices === "number"
+            ? (course as any).maxChoices
+            : typeof (course as any).max_choices === "number"
+            ? (course as any).max_choices
             : undefined,
-          selection_mode:
-            (course as any).selectionMode ||
-            (course as any).selection_mode ||
-            undefined,
-          max_choices:
-            typeof (course as any).maxChoices === "number"
-              ? (course as any).maxChoices
-              : typeof (course as any).max_choices === "number"
-              ? (course as any).max_choices
-              : undefined,
-          share_count:
-            typeof (course as any).shareCount === "number"
-              ? (course as any).shareCount
-              : typeof (course as any).share_count === "number"
-              ? (course as any).share_count
-              : undefined,
-          default_category_names: Array.isArray((course as any).defaultCategoryNames)
-            ? (course as any).defaultCategoryNames.map((name: any) => String(name))
-            : Array.isArray((course as any).default_category_names)
-            ? (course as any).default_category_names.map((name: any) => String(name))
+        share_count:
+          typeof (course as any).shareCount === "number"
+            ? (course as any).shareCount
+            : typeof (course as any).share_count === "number"
+            ? (course as any).share_count
             : undefined,
-        };
-      }
-      return null;
-    })
-    .filter(Boolean)
-    .filter((course): course is MenuTemplateCourseRow => Boolean(course?.name));
+        default_category_names: Array.isArray((course as any).defaultCategoryNames)
+          ? (course as any).defaultCategoryNames.map((item: any) => String(item))
+          : Array.isArray((course as any).default_category_names)
+          ? (course as any).default_category_names.map((item: any) => String(item))
+          : undefined,
+      };
+    }
+    return null;
+  });
+  return mapped.filter((course): course is MenuTemplateCourseRow => Boolean(course));
 };
 
 const toTemplate = (row: MenuTemplateRow) => ({
