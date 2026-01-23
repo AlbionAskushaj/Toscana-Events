@@ -751,9 +751,18 @@ const EventBuilderPage = () => {
                     <div className="menu-style-desc">{template.description}</div>
                     <div className="menu-style-courses">
                       {(template.courses || []).map((course) => (
-                        <span key={course.name} className="menu-style-chip">
-                          {course.name}
-                        </span>
+                        <div key={course.name} className="menu-style-course">
+                          <div className="menu-style-course-name">
+                            {course.name}
+                            {course.selectionMode === "share" && <span className="menu-style-course-tag">To Share</span>}
+                            {course.selectionMode === "choice" && <span className="menu-style-course-tag">Choice</span>}
+                          </div>
+                          <div className="menu-style-course-items">
+                            {course.suggestedItemNames?.length
+                              ? course.suggestedItemNames.join(", ")
+                              : "Select items to preview."}
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </button>

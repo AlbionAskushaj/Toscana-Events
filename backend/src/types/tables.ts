@@ -19,6 +19,10 @@ export interface MenuItemRow {
 export interface MenuTemplateCourseRow {
   name: string;
   suggested_item_names?: string[];
+  selection_mode?: "fixed" | "choice" | "share";
+  max_choices?: number;
+  share_count?: number;
+  default_category_names?: string[];
 }
 
 export interface MenuTemplateRow {
@@ -86,6 +90,7 @@ export interface RoomLayoutRow {
 export interface MenuSelectionCourseRow {
   course_type: string;
   item_ids: string[];
+  share_count?: number;
 }
 
 export interface MenuSelectionRow {

@@ -23,6 +23,18 @@ const ensureUniqueCourseName = (name: string, courses: MenuSelectionCourse[], ig
   return candidate;
 };
 
+const normalizeCategoryName = (value: string) =>
+  value.toLowerCase().replace(/[^a-z0-9]+/g, "");
+
+const fallbackCategoryHints = (courseType: string) => {
+  const normalized = courseType.toLowerCase();
+  if (normalized.includes("course 1") || normalized.includes("starter") || normalized.includes("appetizer")) {
+    return ["Appetizers", "Salads", "Soups"];
+  }
+  if (normalized.includes("dessert")) return ["Desserts"];
+  return [];
+};
+
 const MenuBuilder: React.FC<Props> = ({
   categories,
   items,
@@ -43,6 +55,25 @@ const MenuBuilder: React.FC<Props> = ({
     [categories, items]
   );
 
+  const orderedCategories = useMemo(() => {
+    const activeCourse = selection.courses[activeIndex];
+    const preferredNames =
+      activeCourse?.defaultCategoryNames?.length
+        ? activeCourse.defaultCategoryNames
+        : activeCourse
+        ? fallbackCategoryHints(activeCourse.courseType)
+        : [];
+    if (preferredNames.length === 0) return categoriesWithItems;
+    const preferred = new Set(preferredNames.map(normalizeCategoryName));
+    const preferredList = categoriesWithItems.filter((category) =>
+      preferred.has(normalizeCategoryName(category.name))
+    );
+    const rest = categoriesWithItems.filter(
+      (category) => !preferred.has(normalizeCategoryName(category.name))
+    );
+    return [...preferredList, ...rest];
+  }, [categoriesWithItems, selection.courses, activeIndex]);
+
   const updateCourses = (courses: MenuSelectionCourse[]) => {
     onChange({ courses });
   };
@@ -50,7 +81,10 @@ const MenuBuilder: React.FC<Props> = ({
   const addCourse = () => {
     const baseName = `Course ${selection.courses.length + 1}`;
     const courseType = ensureUniqueCourseName(baseName, selection.courses);
-    const next = [...selection.courses, { courseType, itemIds: [] }];
+    const next = [
+      ...selection.courses,
+      { courseType, itemIds: [], selectionMode: "choice", maxChoices: 1 },
+    ];
     updateCourses(next);
     setActiveIndex(next.length - 1);
   };
@@ -108,11 +142,25 @@ const MenuBuilder: React.FC<Props> = ({
 
   useEffect(() => {
     if (categories.length === 0) return;
-    setOpenCategories((prev) => {
-      if (prev.size > 0) return prev;
-      return new Set([categories[0]._id]);
-    });
-  }, [categories]);
+    const activeCourse = selection.courses[activeIndex];
+    const preferredNames =
+      activeCourse?.defaultCategoryNames?.length
+        ? activeCourse.defaultCategoryNames
+        : activeCourse
+        ? fallbackCategoryHints(activeCourse.courseType)
+        : [];
+    if (preferredNames.length === 0) {
+      setOpenCategories((prev) => (prev.size > 0 ? prev : new Set([categories[0]._id])));
+      return;
+    }
+    const preferred = new Set(preferredNames.map(normalizeCategoryName));
+    const nextOpen = categories
+      .filter((category) => preferred.has(normalizeCategoryName(category.name)))
+      .map((category) => category._id);
+    if (nextOpen.length > 0) {
+      setOpenCategories(new Set(nextOpen));
+    }
+  }, [categories, activeIndex, selection.courses]);
 
   const toggleCategory = (id: string) => {
     setOpenCategories((prev) => {
@@ -128,11 +176,17 @@ const MenuBuilder: React.FC<Props> = ({
     const existing = courses.find((c) => c.courseType === courseType);
     if (existing) {
       const alreadySelected = existing.itemIds.includes(itemId);
-      existing.itemIds = alreadySelected
-        ? existing.itemIds.filter((id) => id !== itemId)
-        : [...existing.itemIds, itemId];
+      if (alreadySelected) {
+        existing.itemIds = existing.itemIds.filter((id) => id !== itemId);
+      } else if (existing.selectionMode === "choice" && (existing.maxChoices || 1) === 1) {
+        existing.itemIds = [itemId];
+      } else {
+        const next = [...existing.itemIds, itemId];
+        const maxChoices = existing.maxChoices || (existing.selectionMode === "choice" ? 1 : undefined);
+        existing.itemIds = maxChoices ? next.slice(0, maxChoices) : next;
+      }
     } else {
-      courses.push({ courseType, itemIds: [itemId] });
+      courses.push({ courseType, itemIds: [itemId], selectionMode: "choice", maxChoices: 1 });
     }
     onChange({ courses });
   };
@@ -187,6 +241,7 @@ const MenuBuilder: React.FC<Props> = ({
                   <span>{course.courseType}</span>
                   <span className={`badge ${index === activeIndex ? "text-bg-light" : "text-bg-secondary"}`}>
                     {course.itemIds.length}
+                    {course.selectionMode === "share" && course.shareCount ? ` • ${course.shareCount}` : ""}
                   </span>
                 </button>
               ))}
@@ -219,11 +274,30 @@ const MenuBuilder: React.FC<Props> = ({
                     <span className="badge text-bg-light">
                       {selection.courses[activeIndex].itemIds.length} selected
                     </span>
+                    {selection.courses[activeIndex].selectionMode === "share" && (
+                      <label className="d-flex align-items-center gap-2 small text-muted">
+                        Share for
+                        <input
+                          className="form-control form-control-sm"
+                          type="number"
+                          min={2}
+                          max={50}
+                          value={selection.courses[activeIndex].shareCount ?? 2}
+                          onChange={(e) => {
+                            const next = [...selection.courses];
+                            const nextCount = Math.max(2, Number(e.target.value) || 2);
+                            next[activeIndex] = { ...next[activeIndex], shareCount: nextCount };
+                            updateCourses(next);
+                          }}
+                          style={{ width: 72 }}
+                        />
+                      </label>
+                    )}
                   </div>
                   <div className="text-muted small">Tip: click a course to edit items.</div>
                 </div>
 
-                {categoriesWithItems.map((category) => {
+                {orderedCategories.map((category) => {
                   const isOpen = openCategories.has(category._id);
                   return (
                     <div key={category._id} className="mb-3">
@@ -256,7 +330,11 @@ const MenuBuilder: React.FC<Props> = ({
                                         <h4 className="h6 mb-1">{item.name}</h4>
                                         <p className="text-muted mb-2">{item.description}</p>
                                       </div>
-                                      <span className="fw-semibold">${item.pricePerPerson.toFixed(2)}</span>
+                                      <span className="fw-semibold">
+                                        {typeof item.pricePerPerson === "number"
+                                          ? `$${item.pricePerPerson.toFixed(2)}`
+                                          : "TBD"}
+                                      </span>
                                     </div>
                                     <div className="d-flex gap-2 flex-wrap">
                                       {item.isVegetarian && <span className="badge text-bg-light">Veg</span>}

@@ -301,23 +301,7 @@ select:-webkit-autofill {
   border: 1px solid rgba(33, 62, 26, 0.2);
   box-shadow: 0 16px 30px rgba(33, 62, 26, 0.16);
   filter: saturate(1.05) contrast(1.02);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
   margin: -8px;
-}
-
-.collage-tile:nth-child(odd) {
-  transform: rotate(-1.2deg);
-  z-index: 1;
-}
-
-.collage-tile:nth-child(even) {
-  transform: rotate(1.2deg);
-  z-index: 2;
-}
-
-.collage-tile:hover {
-  transform: translateY(-6px) rotate(0deg);
-  box-shadow: 0 18px 34px rgba(33, 62, 26, 0.22);
 }
 
 .hero-cta {
@@ -407,18 +391,40 @@ select:-webkit-autofill {
 }
 
 .menu-style-courses {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  display: grid;
+  gap: 0.65rem;
 }
 
-.menu-style-chip {
-  border: 1px solid rgba(33, 62, 26, 0.25);
-  color: var(--text-0);
+.menu-style-course {
+  border: 1px solid rgba(33, 62, 26, 0.18);
+  border-radius: 12px;
+  padding: 0.65rem 0.75rem;
+  background: rgba(252, 250, 240, 0.9);
+}
+
+.menu-style-course-name {
+  font-family: "Noto Serif Display", "Times New Roman", serif;
+  font-size: 0.95rem;
+  color: var(--green-800);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.menu-style-course-tag {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  padding: 2px 6px;
   border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 12px;
-  background: rgba(246, 241, 223, 0.9);
+  border: 1px solid rgba(33, 62, 26, 0.25);
+  color: var(--green-800);
+}
+
+.menu-style-course-items {
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .menu-item-card {
@@ -553,6 +559,34 @@ select:-webkit-autofill {
   background: rgba(255, 255, 255, 0.85);
   display: grid;
   gap: 1rem;
+}
+
+.course-settings {
+  border-top: 1px dashed rgba(33, 62, 26, 0.18);
+  padding-top: 0.9rem;
+}
+
+.course-category-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.category-chip {
+  border: 1px solid rgba(33, 62, 26, 0.25);
+  background: rgba(252, 250, 240, 0.9);
+  color: var(--text-0);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.category-chip.active {
+  border-color: var(--green-800);
+  background: rgba(33, 62, 26, 0.08);
+  color: var(--green-800);
 }
 
 .course-meta {

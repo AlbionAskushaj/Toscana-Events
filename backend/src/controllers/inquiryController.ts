@@ -53,6 +53,7 @@ const toInquiry = (row: EventInquiryRow) => ({
     courses: (row.menu_selection?.courses || []).map((course) => ({
       courseType: course.course_type as any,
       itemIds: course.item_ids,
+      shareCount: course.share_count,
     })),
   },
   dietaryNotes: row.dietary_notes,
@@ -193,7 +194,11 @@ export const createInquiry = async (req: Request, res: Response) => {
           tables: seatingConfig.tables || null,
         },
         menu_selection: {
-          courses: menuSelection.courses.map((c: any) => ({ course_type: c.courseType, item_ids: c.itemIds })),
+          courses: menuSelection.courses.map((c: any) => ({
+            course_type: c.courseType,
+            item_ids: c.itemIds,
+            share_count: c.shareCount,
+          })),
         },
         dietary_notes: dietaryNotes,
         special_requests: specialRequests,

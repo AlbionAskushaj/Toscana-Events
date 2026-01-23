@@ -84,6 +84,7 @@ const InquiryReview: React.FC<Props> = ({
               <strong>{course.courseType.toUpperCase()}</strong>
               <div className="text-muted">
                 {course.itemIds.length} selection{course.itemIds.length === 1 ? "" : "s"}
+                {course.selectionMode === "share" && course.shareCount ? ` · shared for ${course.shareCount}` : ""}
               </div>
             </div>
           ))}

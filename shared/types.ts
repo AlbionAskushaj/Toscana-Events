@@ -20,6 +20,10 @@ export interface MenuItem {
 export interface MenuTemplateCourse {
   name: string;
   suggestedItemNames?: string[];
+  selectionMode?: "fixed" | "choice" | "share";
+  maxChoices?: number;
+  shareCount?: number;
+  defaultCategoryNames?: string[];
 }
 
 export interface MenuTemplate {
@@ -58,6 +62,10 @@ export type CourseType = string;
 export interface MenuSelectionCourse {
   courseType: CourseType;
   itemIds: string[];
+  selectionMode?: "fixed" | "choice" | "share";
+  maxChoices?: number;
+  shareCount?: number;
+  defaultCategoryNames?: string[];
 }
 
 export interface PricingSummary {

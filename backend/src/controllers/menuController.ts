@@ -41,6 +41,27 @@ const normalizeTemplateCourses = (input: unknown): MenuTemplateCourseRow[] => {
             : Array.isArray((course as any).suggested_item_names)
             ? (course as any).suggested_item_names.map((name: any) => String(name))
             : undefined,
+          selection_mode:
+            (course as any).selectionMode ||
+            (course as any).selection_mode ||
+            undefined,
+          max_choices:
+            typeof (course as any).maxChoices === "number"
+              ? (course as any).maxChoices
+              : typeof (course as any).max_choices === "number"
+              ? (course as any).max_choices
+              : undefined,
+          share_count:
+            typeof (course as any).shareCount === "number"
+              ? (course as any).shareCount
+              : typeof (course as any).share_count === "number"
+              ? (course as any).share_count
+              : undefined,
+          default_category_names: Array.isArray((course as any).defaultCategoryNames)
+            ? (course as any).defaultCategoryNames.map((name: any) => String(name))
+            : Array.isArray((course as any).default_category_names)
+            ? (course as any).default_category_names.map((name: any) => String(name))
+            : undefined,
         };
       }
       return null;
@@ -57,6 +78,10 @@ const toTemplate = (row: MenuTemplateRow) => ({
   courses: (row.courses || []).map((course) => ({
     name: course.name,
     suggestedItemNames: course.suggested_item_names || (course as any).suggestedItemNames,
+    selectionMode: course.selection_mode || (course as any).selectionMode,
+    maxChoices: course.max_choices ?? (course as any).maxChoices,
+    shareCount: course.share_count ?? (course as any).shareCount,
+    defaultCategoryNames: course.default_category_names || (course as any).defaultCategoryNames,
   })),
 });
 
