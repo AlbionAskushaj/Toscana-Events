@@ -1,4 +1,5 @@
 import type { EventInquiry } from "@shared/types";
+import { env } from "../config/env";
 
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
@@ -10,6 +11,17 @@ const courseSummary = (courses: Array<{ courseType: string; itemIds: string[] }>
     })
     .join("<br />");
 
+export const DEPOSIT_TIERS = [
+  { minGuests: 10, maxGuests: 15, amount: 200, link: env.stripeLinkSmall },
+  { minGuests: 16, maxGuests: 30, amount: 500, link: env.stripeLinkMedium },
+  { minGuests: 31, maxGuests: Infinity, amount: 1000, link: env.stripeLinkLarge },
+] as const;
+
+export const getDepositInfo = (guestCount: number): { amount: number; link: string } | null => {
+  const tier = DEPOSIT_TIERS.find((t) => guestCount >= t.minGuests && guestCount <= t.maxGuests);
+  return tier ? { amount: tier.amount, link: tier.link } : null;
+};
+
 export const buildInquirySubmittedEmail = (params: {
   inquiry: EventInquiry;
   roomName?: string;
@@ -17,33 +29,14 @@ export const buildInquirySubmittedEmail = (params: {
   admin?: boolean;
 }) => {
   const { inquiry, roomName, templateName, admin } = params;
-  const depositInfo = (() => {
-    const count = inquiry.guestCount || 0;
-    if (count < 10) return null;
-    if (count <= 15) {
-      return {
-        amount: 200,
-        link: "https://buy.stripe.com/eVq9ASeGE7p18XV5N23oA01",
-      };
-    }
-    if (count <= 30) {
-      return {
-        amount: 500,
-        link: "https://buy.stripe.com/dRm6oGgOMaBd0rp6R63oA02",
-      };
-    }
-    return {
-      amount: 1000,
-      link: "https://buy.stripe.com/6oU00idCA5gT0rpcbq3oA03",
-    };
-  })();
+  const depositInfo = getDepositInfo(inquiry.guestCount || 0);
   const eventDate = inquiry.eventDate || "TBD";
   const eventTime = inquiry.eventTime || "TBD";
   const guestCount = inquiry.guestCount || 0;
   const menuSummary = courseSummary(inquiry.menuSelection.courses);
   const roomLabel = roomName || inquiry.roomLayoutId || "TBD";
   const styleLabel = templateName || "Custom";
-  const reviewLink = "https://admin.toscanagrill.ca/inquiries";
+  const reviewLink = env.adminPanelUrl;
 
   const subject = admin ? "New private dining inquiry submitted" : "We received your private dining inquiry";
   const html = `
@@ -54,7 +47,7 @@ export const buildInquirySubmittedEmail = (params: {
         ${admin ? "New inquiry received" : "Your inquiry is in"}
       </h1>
       <p style="color:#e6d8c4; margin:0 0 20px;">
-        ${admin ? `New inquiry from ${inquiry.contactName}.` : `Thanks, ${inquiry.contactName}. We’ll review your request and reach out soon.`}
+        ${admin ? `New inquiry from ${inquiry.contactName}.` : `Thanks, ${inquiry.contactName}. We'll review your request and reach out soon.`}
       </p>
       <div style="border-top:1px solid #2e231a; padding-top:16px; margin-top:12px;">
         <div style="display:flex; flex-wrap:wrap; gap:16px;">
@@ -86,7 +79,7 @@ export const buildInquirySubmittedEmail = (params: {
           ? `<p style="color:#e6d8c4; margin-top:20px;">Review in the admin panel: <a href="${reviewLink}" style="color:#f0d9a2;">${reviewLink}</a></p>`
           : depositInfo
           ? `<p style="color:#e6d8c4; margin-top:20px;">A $${depositInfo.amount} deposit is required within 3 days to hold your booking. Pay here: <a href="${depositInfo.link}" style="color:#f0d9a2;">${depositInfo.link}</a></p>`
-          : `<p style="color:#e6d8c4; margin-top:20px;">No deposit is required for events under 10 guests. We’ll confirm availability and next steps by email or phone.</p>`
+          : `<p style="color:#e6d8c4; margin-top:20px;">No deposit is required for events under 10 guests. We'll confirm availability and next steps by email or phone.</p>`
       }
     </div>
   </div>
@@ -99,7 +92,7 @@ export const buildInquirySubmittedEmail = (params: {
       ? `\n\nReview: ${reviewLink}`
       : depositInfo
       ? `\n\nDeposit required: $${depositInfo.amount}. Pay here: ${depositInfo.link}`
-      : "\n\nNo deposit is required for events under 10 guests. We’ll confirm availability and next steps by email or phone."
+      : "\n\nNo deposit is required for events under 10 guests. We'll confirm availability and next steps by email or phone."
   }`;
 
   return { subject, html, text };
@@ -110,26 +103,7 @@ export const buildInquiryStatusEmail = (params: {
   status: "new" | "reviewing" | "approved" | "declined";
 }) => {
   const { inquiry, status } = params;
-  const depositInfo = (() => {
-    const count = inquiry.guestCount || 0;
-    if (count < 10) return null;
-    if (count <= 15) {
-      return {
-        amount: 200,
-        link: "https://buy.stripe.com/eVq9ASeGE7p18XV5N23oA01",
-      };
-    }
-    if (count <= 30) {
-      return {
-        amount: 500,
-        link: "https://buy.stripe.com/dRm6oGgOMaBd0rp6R63oA02",
-      };
-    }
-    return {
-      amount: 1000,
-      link: "https://buy.stripe.com/6oU00idCA5gT0rpcbq3oA03",
-    };
-  })();
+  const depositInfo = getDepositInfo(inquiry.guestCount || 0);
 
   const subjectMap: Record<string, string> = {
     new: "Your inquiry is received",
@@ -138,10 +112,10 @@ export const buildInquiryStatusEmail = (params: {
     declined: "Update on your private dining request",
   };
   const messageMap: Record<string, string> = {
-    new: "We’ve received your inquiry and will follow up shortly.",
+    new: "We've received your inquiry and will follow up shortly.",
     reviewing: "Our team is reviewing your request now. Please complete the deposit within 3 days to hold your booking.",
     approved: "Great news! Your private dining request is confirmed.",
-    declined: "We’re sorry, but we can’t accommodate this request as submitted.",
+    declined: "We're sorry, but we can't accommodate this request as submitted.",
   };
 
   const subject = subjectMap[status] || "Update on your inquiry";
@@ -159,7 +133,7 @@ export const buildInquiryStatusEmail = (params: {
         ${subject}
       </h1>
       <p style="color:#e6d8c4; margin:0 0 20px;">
-        ${messageMap[status] || "We’ll be in touch shortly."}
+        ${messageMap[status] || "We'll be in touch shortly."}
       </p>
       ${status === "reviewing" ? `<p style="color:#e6d8c4; margin:0 0 20px;">${depositLine}</p>` : ""}
       <div style="border-top:1px solid #2e231a; padding-top:16px; margin-top:12px;">
@@ -171,7 +145,7 @@ export const buildInquiryStatusEmail = (params: {
   </div>
   `;
 
-  const text = `Toscana Italian Grill\n\n${subject}\n\n${messageMap[status] || "We’ll be in touch shortly."}${
+  const text = `Toscana Italian Grill\n\n${subject}\n\n${messageMap[status] || "We'll be in touch shortly."}${
     depositLine ? `\n${depositLine}` : ""
   }\nEvent: ${inquiry.eventDate} at ${inquiry.eventTime}\nGuests: ${inquiry.guestCount}`;
 

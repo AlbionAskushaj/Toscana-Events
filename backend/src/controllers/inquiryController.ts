@@ -1,8 +1,12 @@
 import { Request, Response } from "express";
 import { supabaseAdmin } from "../config/supabase";
+import { env } from "../config/env";
 import { EventInquiryRow, MenuItemRow } from "../types/tables";
 import { sendEmail } from "../services/mailService";
 import { buildInquiryStatusEmail, buildInquirySubmittedEmail } from "../services/emailTemplates";
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_RE = /^\+?[\d\s\-().]{7,20}$/;
 
 const SERVICE_CHARGE_RATE = 0.18;
 const TAX_RATE = 0.05;
@@ -144,6 +148,16 @@ export const createInquiry = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Missing required fields", missingFields });
   }
 
+  if (!EMAIL_RE.test(String(contactEmail))) {
+    return res.status(400).json({ message: "Invalid email address" });
+  }
+  if (!PHONE_RE.test(String(contactPhone))) {
+    return res.status(400).json({ message: "Invalid phone number" });
+  }
+  if (!Number.isInteger(Number(guestCount)) || Number(guestCount) < 1) {
+    return res.status(400).json({ message: "Guest count must be a positive integer" });
+  }
+
   if (buyoutAmount !== undefined && Number(buyoutAmount) < 0) {
     return res.status(400).json({ message: "Buyout amount must be 0 or greater" });
   }
@@ -243,20 +257,22 @@ export const createInquiry = async (req: Request, res: Response) => {
       console.error("[email] Failed to send inquiry confirmation", emailErr);
     }
 
-    try {
-      const adminEmail = buildInquirySubmittedEmail({
-        inquiry,
-        roomName,
-        admin: true,
-      });
-      await sendEmail({
-        to: "info@toscanagrill.ca",
-        subject: adminEmail.subject,
-        html: adminEmail.html,
-        text: adminEmail.text,
-      });
-    } catch (emailErr) {
-      console.error("[email] Failed to send admin inquiry notification", emailErr);
+    if (env.adminNotificationEmail) {
+      try {
+        const adminEmail = buildInquirySubmittedEmail({
+          inquiry,
+          roomName,
+          admin: true,
+        });
+        await sendEmail({
+          to: env.adminNotificationEmail,
+          subject: adminEmail.subject,
+          html: adminEmail.html,
+          text: adminEmail.text,
+        });
+      } catch (emailErr) {
+        console.error("[email] Failed to send admin inquiry notification", emailErr);
+      }
     }
 
     res.status(201).json(inquiry);
@@ -266,14 +282,20 @@ export const createInquiry = async (req: Request, res: Response) => {
   }
 };
 
-export const listInquiries = async (_req: Request, res: Response) => {
+export const listInquiries = async (req: Request, res: Response) => {
+  const page = Math.max(0, Number(req.query.page) || 0);
+  const limit = 50;
+  const from = page * limit;
+  const to = from + limit - 1;
+
   try {
-    const { data, error } = await supabaseAdmin
+    const { data, error, count } = await supabaseAdmin
       .from("event_inquiries")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select("*", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .range(from, to);
     if (error) throw error;
-    res.json((data || []).map(toInquiry));
+    res.json({ inquiries: (data || []).map(toInquiry), total: count ?? 0, page, limit });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to load inquiries" });
