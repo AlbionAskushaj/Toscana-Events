@@ -101,7 +101,7 @@ export interface EventInquiryRow {
   id: string;
   created_at: string;
   updated_at: string;
-  status: "new" | "reviewing" | "approved" | "declined";
+  status: "new" | "reviewing" | "approved" | "declined" | "completed";
   is_buyout?: boolean;
   buyout_amount?: number;
   contact_name: string;

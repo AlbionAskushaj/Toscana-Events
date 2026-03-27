@@ -1,19 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { supabaseAdmin, supabaseAnon } from "../config/supabase";
-
-const parseCookies = (header: string | undefined) =>
-  (header || "")
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .reduce<Record<string, string>>((acc, part) => {
-      const idx = part.indexOf("=");
-      if (idx === -1) return acc;
-      const key = part.slice(0, idx);
-      const value = decodeURIComponent(part.slice(idx + 1));
-      acc[key] = value;
-      return acc;
-    }, {});
+import { parseCookies } from "../utils/cookies";
 
 const setAuthCookies = (res: Response, accessToken: string, refreshToken?: string) => {
   const secure = process.env.NODE_ENV === "production";

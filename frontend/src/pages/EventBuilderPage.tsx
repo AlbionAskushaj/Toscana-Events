@@ -39,6 +39,17 @@ const steps = [
 ];
 const LOCAL_DRAFT_KEY = "toscana:draft:v1";
 
+const DEPOSIT_TIERS = [
+  { minGuests: 10, maxGuests: 15, amount: 200, link: import.meta.env.VITE_STRIPE_LINK_SMALL || "https://buy.stripe.com/eVq9ASeGE7p18XV5N23oA01" },
+  { minGuests: 16, maxGuests: 30, amount: 500, link: import.meta.env.VITE_STRIPE_LINK_MEDIUM || "https://buy.stripe.com/dRm6oGgOMaBd0rp6R63oA02" },
+  { minGuests: 31, maxGuests: Infinity, amount: 1000, link: import.meta.env.VITE_STRIPE_LINK_LARGE || "https://buy.stripe.com/6oU00idCA5gT0rpcbq3oA03" },
+] as const;
+
+const getDepositInfo = (guestCount: number): { amount: number; link: string } | null => {
+  const tier = DEPOSIT_TIERS.find((t) => guestCount >= t.minGuests && guestCount <= t.maxGuests);
+  return tier ? { amount: tier.amount, link: tier.link } : null;
+};
+
 type LocalDraft = {
   form: InquiryFormState;
   currentStep: number;
@@ -432,26 +443,7 @@ const EventBuilderPage = () => {
       specialRequests,
     };
 
-    const depositInfo = (() => {
-      const count = form.eventDetails.guestCount;
-      if (count < 10) return null;
-      if (count <= 15) {
-        return {
-          amount: 200,
-          link: "https://buy.stripe.com/eVq9ASeGE7p18XV5N23oA01",
-        };
-      }
-      if (count <= 30) {
-        return {
-          amount: 500,
-          link: "https://buy.stripe.com/dRm6oGgOMaBd0rp6R63oA02",
-        };
-      }
-      return {
-        amount: 1000,
-        link: "https://buy.stripe.com/6oU00idCA5gT0rpcbq3oA03",
-      };
-    })();
+    const depositInfo = getDepositInfo(form.eventDetails.guestCount);
 
     try {
       await createInquiry(payload);

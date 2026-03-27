@@ -34,7 +34,8 @@ export const listDrafts = async (req: Request, res: Response) => {
       .select("*")
       .eq("email", email)
       .gte("updated_at", cutoff)
-      .order("updated_at", { ascending: false });
+      .order("updated_at", { ascending: false })
+      .limit(20);
 
     if (error) throw error;
     res.json((data || []).map(toDraft));

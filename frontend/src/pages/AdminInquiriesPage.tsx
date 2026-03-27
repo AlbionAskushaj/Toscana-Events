@@ -11,19 +11,23 @@ const AdminInquiriesPage = () => {
   const [rooms, setRooms] = useState<RoomLayout[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(0);
+  const [total, setTotal] = useState(0);
+  const limit = 50;
 
   useEffect(() => {
-    load();
-  }, []);
+    load(page);
+  }, [page]);
 
-  const load = async () => {
+  const load = async (p: number) => {
     try {
       const [data, itemData, roomData] = await Promise.all([
-        adminGetInquiries(),
+        adminGetInquiries(p),
         getMenuItems(),
         getRooms(),
       ]);
-      setInquiries(data);
+      setInquiries(data.inquiries);
+      setTotal(data.total);
       setMenuItems(itemData);
       setRooms(roomData);
     } catch (err) {
@@ -35,7 +39,7 @@ const AdminInquiriesPage = () => {
   const updateStatus = async (id: string, status: InquiryStatus) => {
     try {
       await adminUpdateInquiryStatus(id, status);
-      await load();
+      await load(page);
     } catch (err) {
       console.error(err);
       setError("Failed to update status");
@@ -183,6 +187,18 @@ const AdminInquiriesPage = () => {
           </table>
         </div>
       </div>
+
+      {total > limit && (
+        <div className="d-flex justify-content-between align-items-center mt-3">
+          <button className="btn btn-outline-secondary btn-sm" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
+            Previous
+          </button>
+          <span className="text-muted small">Page {page + 1} of {Math.ceil(total / limit)}</span>
+          <button className="btn btn-outline-secondary btn-sm" disabled={(page + 1) * limit >= total} onClick={() => setPage((p) => p + 1)}>
+            Next
+          </button>
+        </div>
+      )}
 
       {selected && (
         <div className="card mt-3">

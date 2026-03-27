@@ -348,8 +348,8 @@ export async function adminDedupeMenuItems(dryRun = true): Promise<{
   return handleResponse(res);
 }
 
-export async function adminGetInquiries(): Promise<EventInquiry[]> {
-  const res = await adminFetch("/admin/inquiries");
+export async function adminGetInquiries(page = 0): Promise<{ inquiries: EventInquiry[]; total: number; page: number; limit: number }> {
+  const res = await adminFetch(`/admin/inquiries?page=${page}`);
   return handleResponse(res);
 }
 

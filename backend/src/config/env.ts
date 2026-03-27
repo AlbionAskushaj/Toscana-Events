@@ -39,6 +39,11 @@ export const env = {
   clientOrigin,
   postmarkToken: process.env.POSTMARK_SERVER_TOKEN || "",
   emailFrom: process.env.EMAIL_FROM || "",
+  adminNotificationEmail: process.env.ADMIN_NOTIFICATION_EMAIL || "",
+  adminPanelUrl: process.env.ADMIN_PANEL_URL || "https://admin.toscanagrill.ca/inquiries",
+  stripeLinkSmall: process.env.STRIPE_LINK_SMALL || "https://buy.stripe.com/eVq9ASeGE7p18XV5N23oA01",
+  stripeLinkMedium: process.env.STRIPE_LINK_MEDIUM || "https://buy.stripe.com/dRm6oGgOMaBd0rp6R63oA02",
+  stripeLinkLarge: process.env.STRIPE_LINK_LARGE || "https://buy.stripe.com/6oU00idCA5gT0rpcbq3oA03",
 };
 
 console.log(`[env] PORT=${env.port} CLIENT_ORIGIN=${clientOriginRaw}`);
@@ -47,4 +52,7 @@ if (!env.postmarkToken) {
 }
 if (!env.emailFrom) {
   console.warn("[env] Missing EMAIL_FROM; email sending disabled");
+}
+if (!env.adminNotificationEmail) {
+  console.warn("[env] Missing ADMIN_NOTIFICATION_EMAIL; admin inquiry notifications will not be sent");
 }

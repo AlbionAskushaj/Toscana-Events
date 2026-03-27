@@ -1,25 +1,12 @@
 import { Router } from "express";
 import { supabaseAnon } from "../config/supabase";
+import { parseCookies } from "../utils/cookies";
 
 const router = Router();
 
-const parseCookies = (header: string | undefined) =>
-  (header || "")
-    .split(";")
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .reduce<Record<string, string>>((acc, part) => {
-      const idx = part.indexOf("=");
-      if (idx === -1) return acc;
-      const key = part.slice(0, idx);
-      const value = decodeURIComponent(part.slice(idx + 1));
-      acc[key] = value;
-      return acc;
-    }, {});
-
 const setAuthCookies = (accessToken: string, refreshToken: string) => {
   const secure = process.env.NODE_ENV === "production";
-  const sameSite = secure ? "None" : "Lax";
+  const sameSite = secure ? "Strict" : "Lax";
   const base = `Path=/; HttpOnly; SameSite=${sameSite}${secure ? "; Secure" : ""}`;
   return [
     `sb-access-token=${encodeURIComponent(accessToken)}; ${base}`,
