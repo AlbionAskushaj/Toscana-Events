@@ -30,6 +30,9 @@ router.post("/login", async (req, res) => {
     return res.status(400).json({ message: "Email and password are required" });
   }
 
+  if (!supabaseAnon) {
+    return res.status(503).json({ message: "Auth service is not configured." });
+  }
   const { data, error } = await supabaseAnon.auth.signInWithPassword({
     email: String(email),
     password: String(password),
@@ -55,6 +58,7 @@ router.get("/session", async (req, res) => {
     return res.json({ user: null });
   }
 
+  if (!supabaseAnon) return res.json({ user: null });
   const { data, error } = await supabaseAnon.auth.getUser(token);
   if (error || !data.user) {
     return res.json({ user: null });

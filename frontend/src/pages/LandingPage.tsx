@@ -13,13 +13,13 @@ const LandingPage = () => {
         <div className="container py-5">
           <div className="landing-collage">
             <div className="hero-banner">
-              <span className="hero-banner-kicker">Private Dining Builder</span>
+              <span className="hero-banner-kicker">AI Dining Concierge</span>
               <h1>Private dining, curated the Toscana way.</h1>
               <div className="hero-banner-rule" aria-hidden="true" />
             </div>
             <div className="d-flex gap-3 flex-wrap align-items-center mb-4">
               <Link className="btn btn-gold btn-lg hero-cta" to="/build">
-                Begin the Experience
+                Plan Your Event
               </Link>
               <span className="hero-note">
                 No account required to craft a proposal.

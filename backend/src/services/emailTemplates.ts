@@ -3,6 +3,14 @@ import { env } from "../config/env";
 
 const formatCurrency = (value: number) => `$${value.toFixed(2)}`;
 
+const escapeHtml = (str: string): string =>
+  str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+
 const courseSummary = (courses: Array<{ courseType: string; itemIds: string[] }>) =>
   courses
     .map((course) => {
@@ -47,7 +55,7 @@ export const buildInquirySubmittedEmail = (params: {
         ${admin ? "New inquiry received" : "Your inquiry is in"}
       </h1>
       <p style="color:#e6d8c4; margin:0 0 20px;">
-        ${admin ? `New inquiry from ${inquiry.contactName}.` : `Thanks, ${inquiry.contactName}. We'll review your request and reach out soon.`}
+        ${admin ? `New inquiry from ${escapeHtml(inquiry.contactName || "")}.` : `Thanks, ${escapeHtml(inquiry.contactName || "")}. We'll review your request and reach out soon.`}
       </p>
       <div style="border-top:1px solid #2e231a; padding-top:16px; margin-top:12px;">
         <div style="display:flex; flex-wrap:wrap; gap:16px;">
@@ -55,7 +63,7 @@ export const buildInquirySubmittedEmail = (params: {
             <div style="text-transform:uppercase; letter-spacing:0.2em; font-size:11px; color:#d7b36a;">Event</div>
             <div style="font-size:16px; margin-top:6px;">${eventDate} at ${eventTime}</div>
             <div style="color:#e6d8c4;">Guests: ${guestCount}</div>
-            <div style="color:#e6d8c4;">Occasion: ${inquiry.occasionType || "TBD"}</div>
+            <div style="color:#e6d8c4;">Occasion: ${escapeHtml(inquiry.occasionType || "TBD")}</div>
           </div>
           <div style="flex:1 1 220px;">
             <div style="text-transform:uppercase; letter-spacing:0.2em; font-size:11px; color:#d7b36a;">Room & Menu</div>

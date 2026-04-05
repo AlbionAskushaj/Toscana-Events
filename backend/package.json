@@ -9,11 +9,13 @@
     "start": "node dist/backend/src/server.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.82.0",
     "@supabase/supabase-js": "^2.42.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.0",
     "express": "^4.18.2",
     "express-rate-limit": "^8.3.1",
+    "helmet": "^8.1.0",
     "morgan": "^1.10.0",
     "postmark": "^4.0.1"
   },

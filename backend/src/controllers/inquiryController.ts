@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { supabaseAdmin } from "../config/supabase";
 import { env } from "../config/env";
-import { EventInquiryRow, MenuItemRow } from "../types/tables";
+import { EventInquiryRow, MenuItemRow, SeatingConfigRow } from "../types/tables";
 import { sendEmail } from "../services/mailService";
 import { buildInquiryStatusEmail, buildInquirySubmittedEmail } from "../services/emailTemplates";
 
@@ -38,21 +38,21 @@ const toInquiry = (row: EventInquiryRow) => ({
   eventDate: row.event_date,
   eventTime: row.event_time,
   guestCount: row.guest_count,
-  roomLayoutId: row.room_layout_id,
-  seatingConfig: {
-    tablesFor2: row.seating_config.tables_for_2,
-    tablesFor4: row.seating_config.tables_for_4,
-    tablesFor6: row.seating_config.tables_for_6,
-    longTables: row.seating_config.long_tables,
-    selectedTableIds: row.seating_config.selected_table_ids,
-    combinedGroups: row.seating_config.combined_groups?.map((g) => ({
+  roomLayoutId: row.room_layout_id ?? undefined,
+  seatingConfig: row.seating_config && 'tables_for_2' in row.seating_config ? {
+    tablesFor2: (row.seating_config as SeatingConfigRow).tables_for_2,
+    tablesFor4: (row.seating_config as SeatingConfigRow).tables_for_4,
+    tablesFor6: (row.seating_config as SeatingConfigRow).tables_for_6,
+    longTables: (row.seating_config as SeatingConfigRow).long_tables,
+    selectedTableIds: (row.seating_config as SeatingConfigRow).selected_table_ids,
+    combinedGroups: (row.seating_config as SeatingConfigRow).combined_groups?.map((g) => ({
       label: g.label,
       tableIds: g.table_ids,
       seats: g.seats,
       areaId: g.area_id,
     })),
     tables: (row.seating_config as any).tables,
-  },
+  } : undefined,
   menuSelection: {
     courses: (row.menu_selection?.courses || []).map((course) => ({
       courseType: course.course_type as any,
@@ -141,7 +141,6 @@ export const createInquiry = async (req: Request, res: Response) => {
   if (!eventDate) missingFields.push("eventDate");
   if (!eventTime) missingFields.push("eventTime");
   if (!guestCount) missingFields.push("guestCount");
-  if (!roomLayoutId) missingFields.push("roomLayoutId");
   if (!menuSelection?.courses?.length) missingFields.push("menuSelection");
 
   if (missingFields.length > 0) {
@@ -163,6 +162,23 @@ export const createInquiry = async (req: Request, res: Response) => {
   }
   if (isBuyout && buyoutAmount !== undefined && Number(buyoutAmount) <= 0) {
     return res.status(400).json({ message: "Buyout amount must be greater than 0 for buyout events" });
+  }
+
+  if (roomLayoutId) {
+    const { data: roomData, error: roomLookupError } = await supabaseAdmin
+      .from("room_layouts")
+      .select("capacity")
+      .eq("id", roomLayoutId)
+      .maybeSingle();
+    if (roomLookupError) {
+      return res.status(400).json({ message: "Invalid room selection" });
+    }
+    if (!roomData) {
+      return res.status(400).json({ message: "Selected room does not exist" });
+    }
+    if (Number(guestCount) > roomData.capacity) {
+      return res.status(400).json({ message: "Guest count exceeds the capacity of the selected room." });
+    }
   }
 
   try {
@@ -191,22 +207,8 @@ export const createInquiry = async (req: Request, res: Response) => {
         event_date: eventDate,
         event_time: eventTime,
         guest_count: guestCount,
-        room_layout_id: roomLayoutId,
-        seating_config: {
-          tables_for_2: seatingConfig.tablesFor2,
-          tables_for_4: seatingConfig.tablesFor4,
-          tables_for_6: seatingConfig.tablesFor6,
-          long_tables: seatingConfig.longTables,
-          selected_table_ids: seatingConfig.selectedTableIds || [],
-          combined_groups:
-            seatingConfig.combinedGroups?.map((g: any) => ({
-              label: g.label,
-              table_ids: g.tableIds,
-              seats: g.seats,
-              area_id: g.areaId,
-            })) || [],
-          tables: seatingConfig.tables || null,
-        },
+        room_layout_id: roomLayoutId || null,
+        seating_config: {},
         menu_selection: {
           courses: menuSelection.courses.map((c: any) => ({
             course_type: c.courseType,

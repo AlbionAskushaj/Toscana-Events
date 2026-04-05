@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import Layout from "./components/Layout";
 import LandingPage from "./pages/LandingPage";
-import EventBuilderPage from "./pages/EventBuilderPage";
+import ChatPage from "./pages/ChatPage";
 import AdminInquiriesPage from "./pages/AdminInquiriesPage";
 import AdminMenuPage from "./pages/AdminMenuPage";
 import AdminRoomsPage from "./pages/AdminRoomsPage";
@@ -14,7 +14,7 @@ function App() {
     <Layout>
       <Routes>
         <Route path="/" element={<LandingPage />} />
-        <Route path="/build" element={<EventBuilderPage />} />
+        <Route path="/build" element={<ChatPage />} />
         <Route path="/admin/login" element={<AdminLoginPage />} />
         <Route
           path="/admin/inquiries"

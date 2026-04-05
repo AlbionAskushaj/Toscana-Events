@@ -14,9 +14,29 @@ import {
   TableArea,
   TableMeta,
   AreaLine,
+  ChatMessage,
+  ChatInquiryPayload,
 } from "@shared/types";
 
-export type { MenuCategory, MenuItem, RoomLayout, EventInquiry, InquiryStatus, PricingSummary, SeatingConfig, MenuSelectionCourse, CourseType, CreateInquiryPayload, MenuTemplate, MenuTemplateCourse, TableArea, TableMeta, AreaLine };
+export type {
+  MenuCategory,
+  MenuItem,
+  RoomLayout,
+  EventInquiry,
+  InquiryStatus,
+  PricingSummary,
+  SeatingConfig,
+  MenuSelectionCourse,
+  CourseType,
+  CreateInquiryPayload,
+  MenuTemplate,
+  MenuTemplateCourse,
+  TableArea,
+  TableMeta,
+  AreaLine,
+  ChatMessage,
+  ChatInquiryPayload,
+};
 
 export interface EventDetailsInput {
   contactName: string;
@@ -31,15 +51,4 @@ export interface EventDetailsInput {
   isBuyout?: boolean;
   buyoutAmount?: number;
   buyoutDetails?: string;
-}
-
-export interface InquiryFormState {
-  eventDetails: EventDetailsInput;
-  menuSelection: {
-    courses: MenuSelectionCourse[];
-  };
-  seatingConfig: SeatingConfig;
-  roomLayoutId: string;
-  roomFlexibility: "flexible" | "specific";
-  menuStyleId: string;
 }

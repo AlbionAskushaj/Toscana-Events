@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { supabaseAdmin } from "../config/supabase";
 import { DraftRow } from "../types/tables";
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const RETENTION_DAYS = 30;
 
 const cutoffIso = () =>
@@ -55,6 +57,10 @@ export const getDraft = async (req: Request, res: Response) => {
 
     if (error) throw error;
     if (!data) return res.status(404).json({ message: "Draft not found" });
+    const requestEmail = String(req.query.email || "").trim().toLowerCase();
+    if (requestEmail && data.email !== requestEmail) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
     res.json(toDraft(data));
   } catch (err) {
     console.error(err);
@@ -68,6 +74,9 @@ export const createDraft = async (req: Request, res: Response) => {
 
   if (!email || !data) {
     return res.status(400).json({ message: "Email and data are required" });
+  }
+  if (!EMAIL_RE.test(email)) {
+    return res.status(400).json({ message: "Invalid email address" });
   }
 
   try {
@@ -96,6 +105,9 @@ export const updateDraft = async (req: Request, res: Response) => {
 
   if (!email || !data) {
     return res.status(400).json({ message: "Email and data are required" });
+  }
+  if (!EMAIL_RE.test(email)) {
+    return res.status(400).json({ message: "Invalid email address" });
   }
 
   try {

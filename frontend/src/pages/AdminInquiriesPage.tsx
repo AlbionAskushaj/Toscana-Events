@@ -49,7 +49,6 @@ const AdminInquiriesPage = () => {
   const selected = inquiries.find((i) => i._id === selectedId);
   const menuItemById = new Map(menuItems.map((item) => [item._id, item.name]));
   const roomById = new Map(rooms.map((room) => [room._id, room.name]));
-  const roomMetaById = new Map(rooms.map((room) => [room._id, room]));
   const byEventDate = (list: EventInquiry[]) =>
     [...list].sort((a, b) => {
       const left = `${a.eventDate || ""} ${a.eventTime || ""}`.trim();
@@ -255,34 +254,21 @@ const AdminInquiriesPage = () => {
             </div>
 
             <div className="mt-3">
-              <h4 className="h6 text-uppercase text-muted">Seating</h4>
-              <div>Room: {roomById.get(selected.roomLayoutId) || selected.roomLayoutId}</div>
-              <div>Tables for 2: {selected.seatingConfig.tablesFor2}</div>
-              <div>Tables for 4: {selected.seatingConfig.tablesFor4}</div>
-              <div>Tables for 6: {selected.seatingConfig.tablesFor6}</div>
-              <div>Long tables: {selected.seatingConfig.longTables}</div>
-              {selected.seatingConfig.selectedTableIds && selected.seatingConfig.selectedTableIds.length > 0 && (
-                <div>
-                  Selected tables:{" "}
-                  {selected.seatingConfig.selectedTableIds
-                    .map((id) => {
-                      const room = roomMetaById.get(selected.roomLayoutId);
-                      const match = room?.tables?.find((t) => t.id === id);
-                      return match?.label || id;
-                    })
-                    .join(", ")}
-                </div>
-              )}
-              {selected.seatingConfig.combinedGroups && selected.seatingConfig.combinedGroups.length > 0 && (
-                <div>
-                  Combined groups:{" "}
-                  {selected.seatingConfig.combinedGroups
-                    .map((group) => `${group.label} (${group.seats} seats)`)
-                    .join(", ")}
-                </div>
-              )}
-              {selected.seatingConfig.tables && selected.seatingConfig.tables.length > 0 && (
-                <div>Custom tables: {selected.seatingConfig.tables.length}</div>
+              <h4 className="h6 text-uppercase text-muted">Room</h4>
+              {selected.roomLayoutId ? (
+                (() => {
+                  const room = rooms.find((r) => r._id === selected.roomLayoutId);
+                  return room ? (
+                    <>
+                      <div>{room.name}</div>
+                      <div className="text-muted small">Capacity: {room.capacity} guests</div>
+                    </>
+                  ) : (
+                    <div className="text-muted">Room ID: {selected.roomLayoutId}</div>
+                  );
+                })()
+              ) : (
+                <div className="text-muted">To be assigned by team</div>
               )}
             </div>
 

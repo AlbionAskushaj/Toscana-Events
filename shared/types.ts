@@ -90,8 +90,8 @@ export interface EventInquiry extends PricingSummary {
   eventDate: string;
   eventTime: string;
   guestCount: number;
-  roomLayoutId: string;
-  seatingConfig: SeatingConfig;
+  roomLayoutId?: string;
+  seatingConfig?: SeatingConfig;
   menuSelection: {
     courses: MenuSelectionCourse[];
   };
@@ -109,11 +109,32 @@ export interface CreateInquiryPayload {
   eventDate: string;
   eventTime: string;
   guestCount: number;
-  roomLayoutId: string;
-  seatingConfig: SeatingConfig;
+  roomLayoutId?: string;
   menuSelection: {
     courses: MenuSelectionCourse[];
   };
+  dietaryNotes: string;
+  specialRequests: string;
+}
+
+export interface ChatMessage {
+  id?: string;
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface ChatInquiryPayload {
+  contactName: string;
+  contactEmail: string;
+  contactPhone: string;
+  occasionType: string;
+  eventDate: string;
+  eventTime: string;
+  guestCount: number;
+  roomLayoutId?: string;
+  isBuyout?: boolean;
+  buyoutAmount?: number;
+  menuSelection: { courses: MenuSelectionCourse[] };
   dietaryNotes: string;
   specialRequests: string;
 }

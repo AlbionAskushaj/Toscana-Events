@@ -111,8 +111,8 @@ export interface EventInquiryRow {
   event_date: string;
   event_time: string;
   guest_count: number;
-  room_layout_id: string;
-  seating_config: SeatingConfigRow;
+  room_layout_id?: string | null;
+  seating_config?: SeatingConfigRow | Record<string, never>;
   menu_selection: MenuSelectionRow;
   dietary_notes: string;
   special_requests: string;

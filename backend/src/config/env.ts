@@ -21,7 +21,7 @@ const required = ["SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY"] as const;
 
 required.forEach((key) => {
   if (!process.env[key]) {
-    console.warn(`[env] Missing required env var ${key}. Set it in .env`);
+    throw new Error(`[env] Missing required environment variable: ${key}. Set it in .env`);
   }
 });
 
@@ -44,6 +44,9 @@ export const env = {
   stripeLinkSmall: process.env.STRIPE_LINK_SMALL || "https://buy.stripe.com/eVq9ASeGE7p18XV5N23oA01",
   stripeLinkMedium: process.env.STRIPE_LINK_MEDIUM || "https://buy.stripe.com/dRm6oGgOMaBd0rp6R63oA02",
   stripeLinkLarge: process.env.STRIPE_LINK_LARGE || "https://buy.stripe.com/6oU00idCA5gT0rpcbq3oA03",
+  anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
+  apifyToken: process.env.APIFY_TOKEN || "",
+  opentableRestaurantId: process.env.OPENTABLE_RESTAURANT_ID || "",
 };
 
 console.log(`[env] PORT=${env.port} CLIENT_ORIGIN=${clientOriginRaw}`);
@@ -55,4 +58,7 @@ if (!env.emailFrom) {
 }
 if (!env.adminNotificationEmail) {
   console.warn("[env] Missing ADMIN_NOTIFICATION_EMAIL; admin inquiry notifications will not be sent");
+}
+if (!env.anthropicApiKey) {
+  console.warn("[env] Missing ANTHROPIC_API_KEY; chat endpoint will be disabled");
 }

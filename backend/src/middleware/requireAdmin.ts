@@ -36,7 +36,7 @@ export const requireAdmin = async (req: Request, res: Response, next: NextFuncti
       }
     }
 
-    if (!userEmail && refreshToken) {
+    if (!userEmail && refreshToken && supabaseAnon) {
       const { data, error } = await supabaseAnon.auth.refreshSession({ refresh_token: refreshToken });
       if (!error && data?.session?.access_token && data.user?.email) {
         token = data.session.access_token;

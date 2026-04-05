@@ -3,28 +3,21 @@ import type { EventDetailsInput, MenuItem, MenuSelectionCourse, RoomLayout, Pric
 
 interface Props {
   eventDetails: EventDetailsInput;
-  seatingConfig: { tablesFor2: number; tablesFor4: number; tablesFor6: number; longTables: number; selectedTableIds?: string[] };
   room: RoomLayout | undefined;
   courses: MenuSelectionCourse[];
   items: MenuItem[];
   pricing: PricingSummary;
-  roomFlexibility: "flexible" | "specific";
   onEditStep?: (step: number) => void;
 }
 
 const InquiryReview: React.FC<Props> = ({
   eventDetails,
-  seatingConfig,
   room,
   courses,
   items,
   pricing,
-  roomFlexibility,
   onEditStep,
 }) => {
-  const findItemName = (id: string) => items.find((i) => i._id === id)?.name || id;
-  const selectedCount = seatingConfig.selectedTableIds?.length || 0;
-
   return (
     <div className="card">
       <div className="card-body">
@@ -52,21 +45,16 @@ const InquiryReview: React.FC<Props> = ({
           </div>
           <div className="col-12 col-lg-6">
             <div className="d-flex justify-content-between align-items-center">
-              <h4 className="h6 mb-0">Room & Seating</h4>
-              {onEditStep && (
-                <button className="btn btn-link btn-sm" type="button" onClick={() => onEditStep(6)}>
-                  Edit
-                </button>
-              )}
+              <h4 className="h6 mb-0">Room</h4>
             </div>
-            <div>{room ? room.name : "Select a room"}</div>
-            <div className="text-muted">{room?.description}</div>
-            <div className="mt-2">
-              {selectedCount > 0 ? `${selectedCount} tables selected` : "Seating will be tailored by the team."}
-            </div>
-            <div className="text-muted">
-              {roomFlexibility === "flexible" ? "Flexible room preference." : "Specific room requested."}
-            </div>
+            {room ? (
+              <>
+                <div>{room.name}</div>
+                <div className="text-muted">{room.description}</div>
+              </>
+            ) : (
+              <div className="text-muted">To be assigned by our team</div>
+            )}
           </div>
         </div>
 

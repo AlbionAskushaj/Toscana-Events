@@ -6,6 +6,8 @@ import {
   EventInquiry,
   InquiryStatus,
   CreateInquiryPayload,
+  ChatMessage,
+  ChatInquiryPayload,
 } from "../types";
 const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5001/api";
 
@@ -23,6 +25,72 @@ async function handleResponse<T>(res: Response): Promise<T> {
 
 async function adminFetch(path: string, options?: RequestInit): Promise<Response> {
   return fetch(`${API_BASE}${path}`, { ...options, credentials: "include" });
+}
+
+export function streamChatMessage(
+  messages: ChatMessage[],
+  sessionId: string | undefined,
+  onText: (chunk: string) => void,
+  onFieldUpdate: (fields: Partial<ChatInquiryPayload>) => void,
+  onDone: () => void,
+  onError: (err: Error) => void,
+  signal?: AbortSignal
+): void {
+  fetch(`${API_BASE}/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, sessionId }),
+    signal,
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        const msg = await res.text();
+        onError(new Error(msg || "Chat request failed"));
+        return;
+      }
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop()!;
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const payload = line.slice(6);
+          if (payload === "[DONE]") {
+            onDone();
+            return;
+          }
+          if (payload.startsWith("[TEXT] ")) {
+            onText(payload.slice(7));
+          } else if (payload.startsWith("[FIELD_UPDATE] ")) {
+            try {
+              onFieldUpdate(JSON.parse(payload.slice(15)) as Partial<ChatInquiryPayload>);
+            } catch (e) {
+              console.error("[chat] Failed to parse FIELD_UPDATE payload", e, payload);
+            }
+          } else if (payload.startsWith("[ERROR] ")) {
+            const raw = payload.slice(8);
+            let message = raw;
+            try {
+              const parsed = JSON.parse(raw) as { code?: string; message?: string };
+              if (parsed.message) message = parsed.message;
+            } catch {}
+            onError(new Error(message));
+            return;
+          }
+        }
+      }
+      onDone();
+    })
+    .catch((err: unknown) => {
+      if (err instanceof Error && err.name === "AbortError") return;
+      onError(err instanceof Error ? err : new Error(String(err)));
+    });
 }
 
 export async function getMenuCategories(): Promise<MenuCategory[]> {
