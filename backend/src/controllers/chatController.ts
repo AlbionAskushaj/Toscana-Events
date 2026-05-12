@@ -3,11 +3,12 @@ import Anthropic from "@anthropic-ai/sdk";
 import { supabaseAdmin } from "../config/supabase";
 import { env } from "../config/env";
 import { MenuCategoryRow, MenuItemRow, RoomLayoutRow } from "../types/tables";
+import { checkOpenTableAvailability } from "../services/availabilityService";
 
 const anthropic = new Anthropic({ apiKey: env.anthropicApiKey });
 
 function buildSystemPrompt(rooms: RoomLayoutRow[], categories: MenuCategoryRow[], now: Date = new Date()): string {
-  const currentDate = now.toLocaleDateString("en-CA", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Denver" });
+  const currentDate = now.toLocaleDateString("en-CA", { weekday: "long", year: "numeric", month: "long", day: "numeric", timeZone: "America/Edmonton" });
   const roomsBlock = rooms.length
     ? rooms
         .map(
@@ -603,31 +604,16 @@ export const chat = async (req: Request, res: Response) => {
             let resultText =
               "Availability check failed — tell the guest the team will confirm availability within 24 hours.";
             try {
-              const params = new URLSearchParams({
-                date,
-                partySize: String(partySize),
-                ...(time ? { time } : {}),
-              });
-              const availRes = await fetch(
-                `http://localhost:${env.port}/api/availability?${params.toString()}`
-              );
-              if (availRes.ok) {
-                const avail = (await availRes.json()) as {
-                  available: boolean | null;
-                  slots: string[];
-                  date: string;
-                  message?: string;
-                };
-                if (avail.available === null) {
-                  resultText =
-                    "Availability service unavailable — tell the guest the team will confirm availability within 24 hours.";
-                } else if (avail.available && avail.slots.length > 0) {
-                  resultText = `Available on ${date}. Time slots: ${avail.slots.join(", ")}.`;
-                } else if (avail.available) {
-                  resultText = `Available on ${date}. No specific time slots returned — team will confirm timing.`;
-                } else {
-                  resultText = `No availability found on ${date} for ${partySize} guests.`;
-                }
+              const avail = await checkOpenTableAvailability({ date, partySize, time });
+              if (avail.available === null) {
+                resultText =
+                  "Availability service unavailable — tell the guest the team will confirm availability within 24 hours.";
+              } else if (avail.available && avail.slots.length > 0) {
+                resultText = `Available on ${date}. Time slots: ${avail.slots.join(", ")}.`;
+              } else if (avail.available) {
+                resultText = `Available on ${date}. No specific time slots returned — team will confirm timing.`;
+              } else {
+                resultText = `No availability found on ${date} for ${partySize} guests.`;
               }
             } catch (err) {
               console.error("[chat] check_availability error", err);

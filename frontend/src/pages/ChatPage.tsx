@@ -147,7 +147,8 @@ const ChatPage: React.FC = () => {
           assistantContent += chunk;
           setMessages((prev) => {
             const updated = [...prev];
-            updated[updated.length - 1] = { role: "assistant", content: assistantContent };
+            const last = updated[updated.length - 1];
+            updated[updated.length - 1] = { ...last, role: "assistant", content: assistantContent };
             return updated;
           });
         },

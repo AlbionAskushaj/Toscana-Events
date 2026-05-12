@@ -127,7 +127,6 @@ export const createInquiry = async (req: Request, res: Response) => {
     eventTime,
     guestCount,
     roomLayoutId,
-    seatingConfig,
     menuSelection,
     dietaryNotes,
     specialRequests,
