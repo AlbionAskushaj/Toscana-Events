@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 
 const envPaths = [
   path.resolve(process.cwd(), ".env"),
@@ -47,6 +48,9 @@ export const env = {
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || "",
   apifyToken: process.env.APIFY_TOKEN || "",
   opentableRestaurantId: process.env.OPENTABLE_RESTAURANT_ID || "",
+  turnstileSecretKey: process.env.TURNSTILE_SECRET_KEY || "",
+  chatSessionSecret: process.env.CHAT_SESSION_SECRET || "",
+  nodeEnv: process.env.NODE_ENV || "development",
 };
 
 console.log(`[env] PORT=${env.port} CLIENT_ORIGIN=${clientOriginRaw}`);
@@ -61,4 +65,16 @@ if (!env.adminNotificationEmail) {
 }
 if (!env.anthropicApiKey) {
   console.warn("[env] Missing ANTHROPIC_API_KEY; chat endpoint will be disabled");
+}
+
+if (!env.chatSessionSecret) {
+  if (env.nodeEnv === "production") {
+    throw new Error("[env] CHAT_SESSION_SECRET is required in production");
+  }
+  env.chatSessionSecret = crypto.randomBytes(32).toString("hex");
+  console.warn("[env] CHAT_SESSION_SECRET not set; generated an ephemeral dev secret (chat sessions reset on restart)");
+}
+
+if (!env.turnstileSecretKey && env.nodeEnv === "production") {
+  console.warn("[env] TURNSTILE_SECRET_KEY not set; chat endpoint will not require captcha verification");
 }

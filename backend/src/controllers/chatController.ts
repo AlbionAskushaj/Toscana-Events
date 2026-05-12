@@ -4,6 +4,11 @@ import { supabaseAdmin } from "../config/supabase";
 import { env } from "../config/env";
 import { MenuCategoryRow, MenuItemRow, RoomLayoutRow } from "../types/tables";
 import { checkOpenTableAvailability } from "../services/availabilityService";
+import { verifyTurnstileToken } from "../services/turnstile";
+import { issueSessionToken, verifySessionToken } from "../services/chatSession";
+
+const MAX_MESSAGES_PER_SESSION = 60;
+const MAX_RESPONSE_TOKENS = 512;
 
 const anthropic = new Anthropic({ apiKey: env.anthropicApiKey });
 
@@ -504,9 +509,46 @@ function sseFieldUpdate(res: Response, fields: unknown) {
   res.write(`data: [FIELD_UPDATE] ${JSON.stringify(fields)}\n\n`);
 }
 
+export const issueChatSession = async (req: Request, res: Response) => {
+  const { turnstileToken, sessionId } = (req.body || {}) as { turnstileToken?: string; sessionId?: string };
+
+  if (!sessionId || typeof sessionId !== "string" || sessionId.length > 64) {
+    return res.status(400).json({ message: "sessionId is required" });
+  }
+
+  const turnstileRequired = !!env.turnstileSecretKey;
+  if (turnstileRequired) {
+    const remoteIp = (req.ip || "").trim() || undefined;
+    const result = await verifyTurnstileToken(turnstileToken || "", remoteIp);
+    if (!result.success) {
+      console.warn("[chat] Turnstile verification failed", result.errorCodes);
+      return res.status(403).json({ message: "Verification failed. Please refresh and try again." });
+    }
+  } else if (env.nodeEnv === "production") {
+    return res.status(503).json({ message: "Chat verification is not configured." });
+  }
+
+  const token = issueSessionToken(sessionId);
+  return res.json({ token });
+};
+
+function extractBearerToken(req: Request): string | null {
+  const header = req.header("authorization") || req.header("Authorization");
+  if (!header) return null;
+  const match = header.match(/^Bearer\s+(.+)$/i);
+  return match ? match[1].trim() : null;
+}
+
 export const chat = async (req: Request, res: Response) => {
   if (!env.anthropicApiKey) {
     res.status(503).json({ message: "Chat service is not configured. Please contact support." });
+    return;
+  }
+
+  const token = extractBearerToken(req);
+  const session = token ? verifySessionToken(token) : null;
+  if (!session) {
+    res.status(401).json({ message: "Chat session expired. Please refresh the page." });
     return;
   }
 
@@ -514,6 +556,11 @@ export const chat = async (req: Request, res: Response) => {
 
   if (!Array.isArray(messages) || messages.length === 0) {
     res.status(400).json({ message: "messages array is required" });
+    return;
+  }
+
+  if (messages.length > MAX_MESSAGES_PER_SESSION) {
+    res.status(429).json({ message: "This conversation has grown long. Please start a new chat to continue." });
     return;
   }
 
@@ -552,7 +599,7 @@ export const chat = async (req: Request, res: Response) => {
 
       const stream = await anthropic.messages.stream({
         model: "claude-haiku-4-5",
-        max_tokens: 2048,
+        max_tokens: MAX_RESPONSE_TOKENS,
         system: [
           {
             type: "text",

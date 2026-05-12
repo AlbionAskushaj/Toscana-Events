@@ -27,9 +27,31 @@ async function adminFetch(path: string, options?: RequestInit): Promise<Response
   return fetch(`${API_BASE}${path}`, { ...options, credentials: "include" });
 }
 
+export async function requestChatSession(
+  sessionId: string,
+  turnstileToken: string | null
+): Promise<string> {
+  const res = await fetch(`${API_BASE}/chat/session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ sessionId, turnstileToken }),
+  });
+  if (!res.ok) {
+    let message = "Verification failed";
+    try {
+      const data = (await res.json()) as { message?: string };
+      if (data.message) message = data.message;
+    } catch {}
+    throw new Error(message);
+  }
+  const data = (await res.json()) as { token: string };
+  return data.token;
+}
+
 export function streamChatMessage(
   messages: ChatMessage[],
   sessionId: string | undefined,
+  sessionToken: string,
   onText: (chunk: string) => void,
   onFieldUpdate: (fields: Partial<ChatInquiryPayload>) => void,
   onDone: () => void,
@@ -38,7 +60,10 @@ export function streamChatMessage(
 ): void {
   fetch(`${API_BASE}/chat`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${sessionToken}`,
+    },
     body: JSON.stringify({ messages, sessionId }),
     signal,
   })

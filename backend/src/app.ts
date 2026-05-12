@@ -58,13 +58,22 @@ const draftMutationLimiter = rateLimit({
   message: { message: "Too many draft requests. Please try again later." },
 });
 
-// Rate limiter for chat: 20 messages per minute per IP
+// Rate limiter for chat: 12 messages per minute per IP
 const chatLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 20,
+  max: 12,
   standardHeaders: true,
   legacyHeaders: false,
   message: { message: "Too many chat messages. Please slow down." },
+});
+
+// Rate limiter for chat session issuance: 10 per 15 min per IP
+const chatSessionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message: "Too many session requests. Please try again later." },
 });
 
 // Rate limiter for auth: 10 attempts per 15 minutes per IP
@@ -104,6 +113,7 @@ app.use("/api/admin/menu", adminMenuRoutes);
 app.use("/api/admin/inquiries", adminInquiryRoutes);
 app.use("/api/admin/rooms", adminRoomsRoutes);
 app.use("/api/admin/drafts", adminDraftRoutes);
+app.use("/api/chat/session", chatSessionLimiter);
 app.use("/api/chat", chatLimiter, chatRoutes);
 app.use("/api/availability", availabilityLimiter, availabilityRoutes);
 

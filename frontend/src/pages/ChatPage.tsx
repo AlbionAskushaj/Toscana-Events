@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
-import { getRooms, getMenuItems, createInquiry, streamChatMessage } from "../api";
+import { getRooms, getMenuItems, createInquiry, streamChatMessage, requestChatSession } from "../api";
 import type { ChatMessage, ChatInquiryPayload, RoomLayout, MenuItem, CreateInquiryPayload } from "../types";
 import ChatBubble from "../components/ChatBubble";
 import TypingIndicator from "../components/TypingIndicator";
@@ -7,6 +7,60 @@ import LiveInquiryForm from "../components/LiveInquiryForm";
 import ToscanaLogo from "../assets/ToscanaMainLogo.png";
 
 const CHAT_STORAGE_KEY = "toscana:chat:v1";
+const SESSION_TOKEN_KEY = "toscana:chat:token:v1";
+const TURNSTILE_SITE_KEY = import.meta.env.VITE_TURNSTILE_SITE_KEY as string | undefined;
+
+declare global {
+  interface Window {
+    turnstile?: {
+      render: (
+        el: HTMLElement | string,
+        opts: {
+          sitekey: string;
+          callback?: (token: string) => void;
+          "error-callback"?: () => void;
+          "expired-callback"?: () => void;
+          theme?: "light" | "dark" | "auto";
+          appearance?: "always" | "execute" | "interaction-only";
+        }
+      ) => string;
+      reset: (widgetId?: string) => void;
+      remove: (widgetId?: string) => void;
+    };
+  }
+}
+
+interface StoredSessionToken {
+  token: string;
+  sid: string;
+  exp: number;
+}
+
+function loadSessionToken(currentSid: string): string | null {
+  try {
+    const raw = localStorage.getItem(SESSION_TOKEN_KEY);
+    if (!raw) return null;
+    const stored = JSON.parse(raw) as StoredSessionToken;
+    if (stored.sid !== currentSid) return null;
+    if (Date.now() > stored.exp - 60_000) return null;
+    return stored.token;
+  } catch {
+    return null;
+  }
+}
+
+function saveSessionToken(token: string, sid: string) {
+  const stored: StoredSessionToken = { token, sid, exp: Date.now() + 55 * 60 * 1000 };
+  try {
+    localStorage.setItem(SESSION_TOKEN_KEY, JSON.stringify(stored));
+  } catch {}
+}
+
+function clearSessionToken() {
+  try {
+    localStorage.removeItem(SESSION_TOKEN_KEY);
+  } catch {}
+}
 
 const OPENING_MESSAGE: ChatMessage = {
   id: "opening",
@@ -73,22 +127,66 @@ const ChatPage: React.FC = () => {
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [verifyError, setVerifyError] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
   const highlightTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const turnstileContainerRef = useRef<HTMLDivElement>(null);
+  const turnstileWidgetIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const session = loadSession();
     setMessages(session.messages);
     setSessionId(session.sessionId);
-    // Skip intro for returning users with an active session
-    if (session.messages.length > 1) {
+    const existingToken = loadSessionToken(session.sessionId);
+    if (existingToken) setSessionToken(existingToken);
+    // Skip intro for returning users with an active session AND a valid token
+    if (session.messages.length > 1 && existingToken) {
       setShowIntro(false);
     }
     getRooms().then(setRooms).catch(console.error);
     getMenuItems({ active: true }).then(setAllMenuItems).catch(console.error);
   }, []);
+
+  // Mount Turnstile widget on the intro screen when we need a session token
+  useEffect(() => {
+    if (!showIntro) return;
+    if (sessionToken) return;
+    if (!TURNSTILE_SITE_KEY) return;
+    if (!turnstileContainerRef.current) return;
+
+    let cancelled = false;
+    const tryRender = () => {
+      if (cancelled) return;
+      if (!window.turnstile) {
+        setTimeout(tryRender, 200);
+        return;
+      }
+      if (turnstileWidgetIdRef.current) return;
+      const container = turnstileContainerRef.current;
+      if (!container) return;
+      turnstileWidgetIdRef.current = window.turnstile.render(container, {
+        sitekey: TURNSTILE_SITE_KEY,
+        appearance: "interaction-only",
+        callback: (token: string) => setTurnstileToken(token),
+        "error-callback": () => setVerifyError("Verification failed. Please refresh and try again."),
+        "expired-callback": () => setTurnstileToken(null),
+      });
+    };
+    tryRender();
+    return () => {
+      cancelled = true;
+      if (window.turnstile && turnstileWidgetIdRef.current) {
+        window.turnstile.remove(turnstileWidgetIdRef.current);
+        turnstileWidgetIdRef.current = null;
+      }
+    };
+  }, [showIntro, sessionToken]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
@@ -101,7 +199,29 @@ const ChatPage: React.FC = () => {
     };
   }, []);
 
-  const handleBeginPlanning = () => {
+  const handleBeginPlanning = async () => {
+    setVerifyError("");
+    if (!sessionToken) {
+      if (TURNSTILE_SITE_KEY && !turnstileToken) {
+        setVerifyError("Please complete the verification check above before continuing.");
+        return;
+      }
+      setIsVerifying(true);
+      try {
+        const token = await requestChatSession(sessionId, turnstileToken);
+        setSessionToken(token);
+        saveSessionToken(token, sessionId);
+      } catch (err) {
+        setVerifyError(err instanceof Error ? err.message : "Verification failed.");
+        if (window.turnstile && turnstileWidgetIdRef.current) {
+          window.turnstile.reset(turnstileWidgetIdRef.current);
+        }
+        setTurnstileToken(null);
+        setIsVerifying(false);
+        return;
+      }
+      setIsVerifying(false);
+    }
     setIntroExiting(true);
     setTimeout(() => {
       setShowIntro(false);
@@ -126,6 +246,10 @@ const ChatPage: React.FC = () => {
     (text: string) => {
       const trimmed = text.trim();
       if (!trimmed || isStreaming) return;
+      if (!sessionToken) {
+        setShowIntro(true);
+        return;
+      }
 
       const userMessage: ChatMessage = { id: crypto.randomUUID(), role: "user", content: trimmed };
       const nextMessages: ChatMessage[] = [...messages, userMessage];
@@ -143,6 +267,7 @@ const ChatPage: React.FC = () => {
       streamChatMessage(
         payload,
         sessionId,
+        sessionToken,
         (chunk) => {
           assistantContent += chunk;
           setMessages((prev) => {
@@ -167,10 +292,18 @@ const ChatPage: React.FC = () => {
           console.error("[chat] stream error", err);
           setIsStreaming(false);
           abortRef.current = null;
+          const expired = /expired|please refresh/i.test(err.message);
+          if (expired) {
+            clearSessionToken();
+            setSessionToken(null);
+            setShowIntro(true);
+          }
           const errorMessage: ChatMessage = {
             id: crypto.randomUUID(),
             role: "assistant",
-            content: "I'm sorry, something went wrong. Please try again.",
+            content: expired
+              ? "Your session has timed out — please verify again to continue."
+              : "I'm sorry, something went wrong. Please try again.",
           };
           const finalMessages = [...nextMessages, errorMessage];
           setMessages(finalMessages);
@@ -179,7 +312,7 @@ const ChatPage: React.FC = () => {
         controller.signal,
       );
     },
-    [messages, isStreaming, sessionId, handleFieldUpdate],
+    [messages, isStreaming, sessionId, sessionToken, handleFieldUpdate],
   );
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -209,6 +342,10 @@ const ChatPage: React.FC = () => {
     if (!window.confirm("This will clear your conversation and form. Are you sure?")) return;
     abortRef.current?.abort();
     localStorage.removeItem(CHAT_STORAGE_KEY);
+    clearSessionToken();
+    setSessionToken(null);
+    setTurnstileToken(null);
+    setVerifyError("");
     setMessages([OPENING_MESSAGE]);
     setSessionId(crypto.randomUUID());
     setInquiryFields({});
@@ -261,16 +398,30 @@ const ChatPage: React.FC = () => {
                 </div>
               </div>
             </div>
+            {TURNSTILE_SITE_KEY && !sessionToken && (
+              <div className="chat-intro__verify" ref={turnstileContainerRef} />
+            )}
+            {verifyError && (
+              <div
+                className="alert alert-danger py-2 px-3"
+                style={{ fontSize: "0.875rem", marginTop: "0.5rem" }}
+              >
+                {verifyError}
+              </div>
+            )}
             <button
               type="button"
               className="btn btn-primary chat-intro__cta"
               onClick={handleBeginPlanning}
+              disabled={isVerifying}
             >
-              Begin Planning
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <line x1="5" y1="12" x2="19" y2="12" />
-                <polyline points="12 5 19 12 12 19" />
-              </svg>
+              {isVerifying ? "Verifying…" : "Begin Planning"}
+              {!isVerifying && (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                  <polyline points="12 5 19 12 12 19" />
+                </svg>
+              )}
             </button>
           </div>
         </div>
