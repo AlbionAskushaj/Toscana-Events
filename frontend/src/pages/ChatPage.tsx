@@ -66,7 +66,7 @@ const OPENING_MESSAGE: ChatMessage = {
   id: "opening",
   role: "assistant",
   content:
-    "Welcome to Toscana Italian Grill. I'm your private dining concierge — I'd love to help you plan something unforgettable. What's the occasion?",
+    "Welcome to Toscana — we're a locally-owned, family-run Italian restaurant in Calgary, and we'd love to help you plan something special. What's the occasion?",
 };
 
 function loadSession(): { messages: ChatMessage[]; sessionId: string } {
@@ -326,7 +326,10 @@ const ChatPage: React.FC = () => {
     setSubmitError("");
     setIsSubmitting(true);
     try {
-      await createInquiry(inquiryFields as CreateInquiryPayload);
+      await createInquiry({
+        ...(inquiryFields as CreateInquiryPayload),
+        chatSessionId: sessionId,
+      });
       setSubmitted(true);
       localStorage.removeItem(CHAT_STORAGE_KEY);
     } catch (err) {

@@ -7,6 +7,7 @@ import AdminMenuPage from "./pages/AdminMenuPage";
 import AdminRoomsPage from "./pages/AdminRoomsPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminTemplatesPage from "./pages/AdminTemplatesPage";
+import AdminTranscriptsPage from "./pages/AdminTranscriptsPage";
 import RequireAdmin from "./components/RequireAdmin";
 
 function App() {
@@ -45,6 +46,14 @@ function App() {
           element={
             <RequireAdmin>
               <AdminRoomsPage />
+            </RequireAdmin>
+          }
+        />
+        <Route
+          path="/admin/transcripts"
+          element={
+            <RequireAdmin>
+              <AdminTranscriptsPage />
             </RequireAdmin>
           }
         />

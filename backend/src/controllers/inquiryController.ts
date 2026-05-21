@@ -130,6 +130,7 @@ export const createInquiry = async (req: Request, res: Response) => {
     menuSelection,
     dietaryNotes,
     specialRequests,
+    chatSessionId,
   } = req.body;
 
   const missingFields: string[] = [];
@@ -229,6 +230,21 @@ export const createInquiry = async (req: Request, res: Response) => {
     if (error) throw error;
 
     const inquiry = toInquiry(data as EventInquiryRow);
+
+    if (chatSessionId && typeof chatSessionId === "string") {
+      try {
+        await supabaseAdmin
+          .from("chat_transcripts")
+          .update({
+            inquiry_id: inquiry._id,
+            contact_email: inquiry.contactEmail,
+            contact_name: inquiry.contactName,
+          })
+          .eq("session_id", chatSessionId);
+      } catch (linkErr) {
+        console.warn("[inquiry] Failed to link chat transcript", linkErr);
+      }
+    }
     let roomName: string | undefined;
     try {
       if (inquiry.roomLayoutId) {

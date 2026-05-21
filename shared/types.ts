@@ -115,6 +115,7 @@ export interface CreateInquiryPayload {
   };
   dietaryNotes: string;
   specialRequests: string;
+  chatSessionId?: string;
 }
 
 export interface ChatMessage {

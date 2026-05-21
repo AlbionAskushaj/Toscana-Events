@@ -231,6 +231,9 @@ const AdminMenuPage = () => {
           <Link className="btn btn-outline-secondary" to="/admin/rooms">
             Rooms
           </Link>
+          <Link className="btn btn-outline-secondary" to="/admin/transcripts">
+            Transcripts
+          </Link>
         </div>
       </div>
 

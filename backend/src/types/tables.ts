@@ -130,3 +130,30 @@ export interface DraftRow {
   created_at: string;
   updated_at: string;
 }
+
+export interface TranscriptToolCall {
+  name: string;
+  input: Record<string, unknown>;
+  result?: string;
+}
+
+export interface TranscriptTurn {
+  role: "user" | "assistant" | "tool";
+  content: string;
+  timestamp: string;
+  tool_calls?: TranscriptToolCall[];
+  field_updates?: Record<string, unknown>;
+}
+
+export interface ChatTranscriptRow {
+  id: string;
+  session_id: string;
+  created_at: string;
+  updated_at: string;
+  last_message_at: string;
+  inquiry_id: string | null;
+  contact_email: string | null;
+  contact_name: string | null;
+  message_count: number;
+  transcript: TranscriptTurn[];
+}

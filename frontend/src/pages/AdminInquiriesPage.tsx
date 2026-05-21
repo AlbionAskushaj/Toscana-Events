@@ -80,6 +80,9 @@ const AdminInquiriesPage = () => {
           <Link className="btn btn-outline-secondary" to="/admin/rooms">
             Rooms
           </Link>
+          <Link className="btn btn-outline-secondary" to="/admin/transcripts">
+            Transcripts
+          </Link>
         </div>
       </div>
       {error && <div className="alert alert-warning">{error}</div>}

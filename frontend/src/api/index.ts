@@ -482,3 +482,44 @@ export async function adminDeleteRoom(id: string): Promise<void> {
   });
   await handleResponse(res);
 }
+
+export interface ChatTranscriptSummary {
+  id: string;
+  sessionId: string;
+  createdAt: string;
+  updatedAt: string;
+  lastMessageAt: string;
+  inquiryId: string | null;
+  contactEmail: string | null;
+  contactName: string | null;
+  messageCount: number;
+  preview: string;
+}
+
+export interface ChatTranscriptTurn {
+  role: "user" | "assistant" | "tool";
+  content: string;
+  timestamp: string;
+  tool_calls?: Array<{
+    name: string;
+    input: Record<string, unknown>;
+    result?: string;
+  }>;
+  field_updates?: Record<string, unknown>;
+}
+
+export interface ChatTranscriptDetail extends ChatTranscriptSummary {
+  transcript: ChatTranscriptTurn[];
+}
+
+export async function adminListChatTranscripts(
+  page = 0
+): Promise<{ transcripts: ChatTranscriptSummary[]; total: number; page: number; limit: number }> {
+  const res = await adminFetch(`/admin/chat-transcripts?page=${page}`);
+  return handleResponse(res);
+}
+
+export async function adminGetChatTranscript(id: string): Promise<ChatTranscriptDetail> {
+  const res = await adminFetch(`/admin/chat-transcripts/${id}`);
+  return handleResponse(res);
+}
